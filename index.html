@@ -634,6 +634,138 @@ async function start(){
  if(session){currentUser=session.user;const {data:profile,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(error||!profile){renderLogin();return}currentProfile=profile;renderShell();await loadAll();setupRealtime();showTab('control')}else renderLogin();
 }
 
+
+/* ===== LIVE UX PATCH: no-refresh workflow ===== */
+(function(){
+  const _loadAllBase = window.loadAll;
+  const _createReportBase = window.createReport;
+
+  window.showTab = function(name){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+    document.querySelectorAll('.tab-panel').forEach(s=>{s.classList.add('hidden');s.classList.remove('active')});
+    const el=document.getElementById(name);
+    if(el){el.classList.remove('hidden');el.classList.add('active')}
+    try{
+      if(name==='control')renderControl();
+      else if(name==='new')renderNew();
+      else if(name==='tracking')renderTracking();
+      else if(name==='qa')renderQA();
+      else if(name==='reports')renderReports();
+      else if(name==='employees')renderEmployees();
+      else if(name==='technicians')renderTechnicians();
+      else if(name==='locations')renderLocations();
+      else if(name==='requests')refreshLeaveData().then(renderRequests);
+      else if(name==='messages')renderMessages();
+      else if(name==='performance')renderPerformance();
+      else if(name==='notes')renderNotes();
+      else if(name==='guide')renderGuide();
+      else if(name==='settings')renderSettings();
+    }catch(e){console.error('showTab render error',e)}
+  };
+
+  window.loadAll = async function(){
+    await _loadAllBase();
+    const visible=document.querySelector('.tab-panel:not(.hidden)')?.id || document.querySelector('.tab-panel.active')?.id || 'control';
+    try{
+      if(visible==='control')renderControl();
+      else if(visible==='new')renderNew();
+      else if(visible==='tracking')renderTracking();
+      else if(visible==='qa')renderQA();
+      else if(visible==='reports')renderReports();
+      else if(visible==='employees')renderEmployees();
+      else if(visible==='technicians')renderTechnicians();
+      else if(visible==='locations')renderLocations();
+      else if(visible==='requests')await refreshLeaveData().then(renderRequests);
+      else if(visible==='messages')renderMessages();
+      else if(visible==='performance')renderPerformance();
+      else if(visible==='notes')renderNotes();
+      else if(visible==='guide')renderGuide();
+      else if(visible==='settings')renderSettings();
+    }catch(e){console.error('live render error',e)}
+    updateDashboard();
+    applyPermissionsUI();
+  };
+
+  window.createReport = async function(e){
+    e.preventDefault();
+    const msg=document.getElementById('newMsg');
+    const form=document.getElementById('newForm');
+    const originalText=form?.querySelector('button[type="submit"]')?.textContent || 'حفظ البلاغ';
+    const btn=form?.querySelector('button[type="submit"]');
+    if(btn){btn.disabled=true;btn.textContent='جاري تسجيل البلاغ…'}
+    try{
+      const deptId=Number(document.getElementById('fDept').value);
+      const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10);
+      const t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);
+      const created=new Date(`${d}T${t}`).toISOString();
+      const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
+      await ensureEmployee(payload.employee_no,payload.requester,payload.ext);
+      const {data,error}=await sb.from('reports').insert(payload).select('*').single();
+      if(error)throw error;
+      await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم');
+      if(msg){msg.className='msg show ok';msg.textContent=`✅ تم تسجيل البلاغ رقم #${data.id} بنجاح.`}
+      toast(`✅ تم تسجيل البلاغ #${data.id} بنجاح`);
+      form.reset();setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelect('fMainLocation','fSubLocation');lookupEmployee();
+      await window.loadAll();
+      window.showTab('control');
+      // Keep a second success confirmation visible after switching tabs.
+      toast(`تم تسجيل البلاغ رقم #${data.id} بنجاح`);
+    }catch(error){
+      if(msg){msg.className='msg show err';msg.textContent='تعذر حفظ البلاغ: '+(error?.message||error)}
+      toast('تعذر تسجيل البلاغ',false);
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=originalText}
+    }
+  };
+
+  // Always render the full current workspace, including the permissions entry.
+  window.renderApp = function(){ renderShell(); };
+
+  window.subscribeRealtime = function(){
+    try{
+      if(rtChannel)sb.removeChannel(rtChannel);
+      rtChannel=sb.channel('control-dept-live-v2')
+        .on('postgres_changes',{event:'*',schema:'public',table:'reports'},async()=>{await window.loadAll()})
+        .on('postgres_changes',{event:'*',schema:'public',table:'locations'},async()=>{await window.loadAll()})
+        .on('postgres_changes',{event:'*',schema:'public',table:'technicians'},async()=>{await window.loadAll()})
+        .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},async()=>{
+          await refreshSocial();
+          if(document.getElementById('modal')?.classList.contains('hidden')===false && document.querySelector('.permissions-modal')) await openPermissionsModal();
+          applyPermissionsUI();
+        })
+        .on('postgres_changes',{event:'*',schema:'public',table:'user_permissions'},async()=>{
+          await loadPermissions();
+          applyPermissionsUI();
+          if(document.querySelector('.permissions-modal')) await openPermissionsModal();
+        })
+        .on('postgres_changes',{event:'*',schema:'public',table:'leave_requests'},async()=>{
+          if(document.getElementById('requests')&&!document.getElementById('requests').classList.contains('hidden')){await refreshLeaveData();renderRequests()}
+        })
+        .subscribe();
+    }catch(e){console.warn('Realtime setup:',e)}
+  };
+
+  // Make permissions always self-refreshing and always closable.
+  window.openPermissionsModal = async function(){
+    if(!isAdmin())return;
+    const modal=document.getElementById('modal');
+    openModal(`<div class="modal-box permissions-modal"><button class="modal-close" aria-label="إغلاق" onclick="closeModal()">×</button><h2>👑 إدارة المستخدمين والصلاحيات</h2><div class="empty">جاري تحميل المستخدمين والصلاحيات…</div></div>`);
+    try{
+      const [{data:users,error:ue},{data:rows,error:pe}]=await Promise.all([
+        sb.from('profiles').select('id,full_name,role,display_title,active').eq('active',true).order('full_name'),
+        sb.from('user_permissions').select('user_id,permission,enabled')
+      ]);
+      if(ue)throw ue;if(pe)throw pe;
+      window._profiles=users||[];
+      const by={};(rows||[]).filter(x=>x.enabled!==false).forEach(x=>(by[x.user_id]??=[]).push(x.permission));
+      const body=(users||[]).map(u=>`<div class="perm-user"><div class="perm-user-head"><div style="flex:1"><b>${esc(u.full_name||'بدون اسم')}</b><div style="font-size:12px;color:var(--muted)">الدور الداخلي: ${esc(u.role||'user')}</div><label style="display:block;margin-top:8px">المسمى الوظيفي الظاهر<input id="title_${u.id}" value="${esc(u.display_title||((u.role==='admin')?'رئيس القسم':'مشرف قسم البلاغات'))}" placeholder="اكتب أي مسمى"></label></div><button class="btn btn-primary" onclick="saveUserPermissions('${u.id}')">حفظ</button></div><div class="perm-list">${PERMISSIONS.map(([k,l])=>`<label class="perm-item"><input type="checkbox" data-user="${u.id}" data-perm-key="${k}" ${((by[u.id]||[]).includes(k)||u.role==='admin')?'checked':''} ${u.role==='admin'?'disabled':''}> <span>${l}</span></label>`).join('')}</div></div>`).join('');
+      modal.innerHTML=`<div class="modal-box permissions-modal"><button class="modal-close" aria-label="إغلاق" onclick="closeModal()">×</button><h2>👑 إدارة المستخدمين والصلاحيات</h2><p>جميع المستخدمين النشطين ظاهرون هنا، ويمكن تعديل الصلاحيات بدون تحديث الصفحة.</p><div class="crm-admin-grid">${body||'<div class="empty">لا يوجد مستخدمون نشطون.</div>'}</div></div>`;
+    }catch(err){
+      modal.innerHTML=`<div class="modal-box permissions-modal"><button class="modal-close" aria-label="إغلاق" onclick="closeModal()">×</button><h2>👑 إدارة المستخدمين والصلاحيات</h2><div class="msg show err">تعذر تحميل المستخدمين والصلاحيات: ${esc(err?.message||err)}</div></div>`;
+    }
+  };
+})();
+
 start();
 </script>
 </body>
