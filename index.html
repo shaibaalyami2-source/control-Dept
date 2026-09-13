@@ -154,7 +154,18 @@ table{background:#fff;border-radius:16px;overflow:hidden}th{background:#0b3c8d!i
 @media(max-width:700px){.kpis{grid-template-columns:1fr 1fr}.container{padding:14px}.login-card-v2{padding:18px 20px}.login-language{position:static;justify-content:center;width:max-content;margin:0 auto 5px}.login-logo-v2{width:70px;height:70px}}
 
 </style>
-<style id="crm-nav-fix">.admin-shortcut{font-weight:800}.tabs{overflow-x:auto;scrollbar-width:thin}.tabs .tab-btn{white-space:nowrap}</style></head>
+<style id="crm-nav-fix">.admin-shortcut{font-weight:800}.tabs{overflow-x:auto;scrollbar-width:thin}.tabs .tab-btn{white-space:nowrap}</style><style id="sidebar-final-fix">
+/* Restore the proven collapsible sidebar behavior without changing layout sizing */
+.sidebar{position:fixed!important;top:0!important;right:-330px!important;width:280px!important;height:100vh!important;transition:right .22s ease!important;z-index:150!important;overflow:auto!important}
+.sidebar.open{right:0!important}
+.backdrop{display:none!important}
+@media(max-width:900px){
+  .shell{margin-right:0!important}
+  .sidebar{right:-330px!important;width:min(92vw,340px)!important}
+  .sidebar.open{right:0!important}
+}
+</style>
+</head>
 <body>
 <div id="app"></div>
 <section id="printSheet" class="print-sheet" aria-hidden="true">
