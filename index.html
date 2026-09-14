@@ -258,7 +258,6 @@ function translateNodeText(){const map={
 function translateNumbers(){const locale=isEnglish?'en-US':'ar-SA-u-nu-arab';document.querySelectorAll('input[type=number],input[type=date],input[type=time]').forEach(()=>{});document.querySelectorAll('.kpi strong,.metric strong,.nav-badge,.empty').forEach(el=>{if(/^\s*[0-9]+(?:\.[0-9]+)?\s*$/.test(el.textContent||''))el.textContent=new Intl.NumberFormat(locale,{useGrouping:false}).format(Number(el.textContent))})}
 
 function riyadhInputParts(v){if(!v)return {date:'',time:''};const parts=new Intl.DateTimeFormat('en-CA-u-ca-gregory',{calendar:'gregory',timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(v));const o={};for(const x of parts)if(x.type!=='literal')o[x.type]=x.value;return {date:`${o.year}-${o.month}-${o.day}`,time:`${o.hour}:${o.minute}`}}
-function formatShiftTime(v){if(v===null||v===undefined||v==='')return '—';const m=String(v).match(/^(\d{1,2}):(\d{2})/);return m?`${String(m[1]).padStart(2,'0')}:${m[2]}`:String(v)}
 function riyadhDateTimeToISO(d,t){return new Date(`${d}T${t}:00+03:00`).toISOString()}
 const fmtMin=m=>{if(m==null||isNaN(m))return'—';m=Math.round(m);if(m<60)return `${m} د`;const h=Math.floor(m/60),mm=m%60;return `${h} س ${mm?mm+' د':''}`};
 const nowISO=()=>new Date().toISOString();
@@ -332,23 +331,6 @@ async function logout(){
   }finally{
     logoutInProgress=false;
   }
-}
-async function loadAll(){
- const [r,d,t,s,e,l]=await Promise.all([
-sb.from('reports').select('*').order('created_at',{ascending:false}),
-  sb.from('departments').select('id,name_ar').eq('active',true).order('id'),
-  sb.from('technicians').select('id,name,employee_no,active,department_id').eq('active',true).order('id'),
-  sb.from('shifts').select('*').eq('active',true).order('code'),
-  sb.from('employee_directory').select('employee_no,full_name,extension,active').eq('active',true).order('employee_no'),
-  sb.from('issue_catalog').select('label,department_id').eq('active',true).order('id'),
-  sb.from('locations').select('id,main_location,sub_location,active').eq('active',true).order('main_location').order('sub_location')
- ]);
- if(r.error){toast('خطأ في تحميل البلاغات: '+r.error.message,false);return}
- reports=r.data||[];departments=dedupeDepartments(d.data||[]);technicians=t.data||[];shifts=s.data||[];issueOptions=(e?.data||[]).map(x=>x.label).filter(Boolean); locations=l?.data||locations;
- if(document.getElementById('fMainLocation')){populateMainLocationSelect('fMainLocation');populateSubLocationSelect('fMainLocation','fSubLocation')}
-
- const dbEmp=e.data||[]; const em=new Map(seededEmployees.map(x=>[String(x.employee_no),x])); dbEmp.forEach(x=>em.set(String(x.employee_no),x)); employees=[...em.values()];
- if(document.getElementById('app').querySelector('.shell')){updateDashboard(); if(document.querySelector('.tab-panel.active')?.id==='control')renderControl(); if(document.querySelector('.tab-panel.active')?.id==='tracking')renderTracking(); if(document.querySelector('.tab-panel.active')?.id==='qa')renderQA(); if(document.querySelector('.tab-panel.active')?.id==='reports')renderReports(); if(document.querySelector('.tab-panel.active')?.id==='shifts')renderShifts(); if(document.querySelector('.tab-panel.active')?.id==='employees')renderEmployees();}
 }
 function subscribeRealtime(){
  if(rtChannel)sb.removeChannel(rtChannel);
@@ -520,7 +502,7 @@ function renderReports(){const el=document.getElementById('reports');if(!el)retu
 function renderReportsTable(){const box=document.getElementById('reportTable');if(!box)return;const rows=filteredReports();box.innerHTML=`<div class="metrics-grid" style="margin-bottom:12px">${summaryMetric('النتائج',rows.length)}${summaryMetric('منجز',rows.filter(r=>r.status==='منجز').length)}${summaryMetric('متأخر',rows.filter(overdue).length)}${summaryMetric('مع فني',rows.filter(r=>r.technician_id).length)}</div><div class="table-wrap"><table><thead><tr><th>رقم</th><th>الإنشاء</th><th>الإغلاق الفعلي</th><th>طالب الخدمة</th><th>الموقع</th><th>الأولوية</th><th>الحالة</th><th>الفني</th><th>الإجراء التصحيحي</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>#${r.id}</td><td>${fmt(r.created_at)}</td><td>${fmt(r.closed_at)}</td><td>${esc(r.requester)}</td><td>${esc(r.main_location)}</td><td>${esc(r.priority)}</td><td>${esc(r.status)}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td>${esc(r.corrective_action||'—')}</td></tr>`).join(''):'<tr><td colspan="9" class="empty">لا توجد نتائج مطابقة</td></tr>'}</tbody></table></div>`}
 function printReports(){const rows=filteredReports();preparePrint(rows);window.print()}
 function exportCSV(){const rows=filteredReports();const head=['رقم البلاغ','وقت الإنشاء','وقت الإغلاق الفعلي','طالب الخدمة','رقم الموظف','الموقع الرئيسي','الموقع الفرعي','الأولوية','نوع البلاغ','الحالة','الفني','القسم','حالة QA','الوصف'];const lines=[head,...rows.map(r=>[r.id,r.created_at,r.closed_at,r.requester,r.employee_no,r.main_location,r.sub_location,r.priority,r.issue_type,r.status,technicians.find(t=>t.id===r.technician_id)?.name||'',departments.find(d=>d.id===r.responsible_department_id)?.name_ar||departments.find(d=>d.id===r.department_id)?.name_ar||'',r.qa_status,r.description])].map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(','));const blob=new Blob(['\\ufeff'+lines.join('\\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='control-dept-reports.csv';a.click();URL.revokeObjectURL(a.href)}
-function renderShifts(){const el=document.getElementById('shifts');if(!el)return;const today=riyadhInputParts(new Date().toISOString()).date;el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>إدارة الورديات والأداء</h2><p>مؤشرات الوردية مبنية على البلاغات المسجلة اليوم.</p></div></div><div class="shift-grid">${(shifts.length?shifts:[{code:'A',name_ar:'الوردية A',start_time:'07:00',end_time:'15:00'},{code:'B',name_ar:'الوردية B',start_time:'15:00',end_time:'23:00'},{code:'C',name_ar:'الوردية C',start_time:'23:00',end_time:'07:00'}]).map(s=>{const rs=reports.filter(r=>r.shift_code===s.code&&riyadhInputParts(r.created_at).date===today);const done=rs.filter(r=>r.status==='منجز').length;const active=rs.filter(isActive).length;const overdueN=rs.filter(overdue).length;return `<div class="shift-card"><h3>${esc(s.name_ar)} <span class="badge badge-blue">${s.code}</span></h3><div class="shift-time">${formatShiftTime(s.start_time)} – ${formatShiftTime(s.end_time)}</div><div class="shift-stats"><div class="shift-stat"><small>بلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>نشطة</small><b>${active}</b></div><div class="shift-stat"><small>متأخرة</small><b class="${overdueN?'overdue':''}">${overdueN}</b></div></div></div>`}).join('')}</div></div>`}
+function renderShifts(){const el=document.getElementById('shifts');if(!el)return;const today=new Date().toISOString().slice(0,10);el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>إدارة الورديات والأداء</h2><p>مؤشرات الوردية مبنية على البلاغات المسجلة اليوم.</p></div></div><div class="shift-grid">${(shifts.length?shifts:[{code:'A',name_ar:'الوردية A',start_time:'07:00',end_time:'15:00'},{code:'B',name_ar:'الوردية B',start_time:'15:00',end_time:'23:00'},{code:'C',name_ar:'الوردية C',start_time:'23:00',end_time:'07:00'}]).map(s=>{const rs=reports.filter(r=>r.shift_code===s.code&&r.created_at.slice(0,10)===today);const done=rs.filter(r=>r.status==='منجز').length;const active=rs.filter(isActive).length;const overdueN=rs.filter(overdue).length;return `<div class="shift-card"><h3>${esc(s.name_ar)} <span class="badge badge-blue">${s.code}</span></h3><div class="shift-time">${s.start_time||'—'} – ${s.end_time||'—'}</div><div class="shift-stats"><div class="shift-stat"><small>بلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>نشطة</small><b>${active}</b></div><div class="shift-stat"><small>متأخرة</small><b class="${overdueN?'overdue':''}">${overdueN}</b></div></div></div>`}).join('')}</div></div>`}
 function renderQA(){
  const el=document.getElementById('qa');if(!el)return;
  const today=riyadhInputParts(new Date().toISOString()).date;
@@ -531,7 +513,7 @@ function renderQAShift(){
  const box=document.getElementById('qaShiftBody');if(!box)return;const date=document.getElementById('qaDate')?.value||riyadhInputParts(new Date().toISOString()).date;
  const fallback=[{code:'A',name_ar:'الوردية A',start_time:'07:00',end_time:'15:00'},{code:'B',name_ar:'الوردية B',start_time:'15:00',end_time:'23:00'},{code:'C',name_ar:'الوردية C',start_time:'23:00',end_time:'07:00'}];
  const list=shifts.length?shifts:fallback;
- box.innerHTML=`<div class="shift-grid">${list.map(sh=>{const rs=reports.filter(r=>r.shift_code===sh.code&&riyadhInputParts(r.created_at).date===date);const done=rs.filter(r=>r.status==='منجز').length;const pending=rs.length-done;const pct=rs.length?Math.round(done/rs.length*100):0;const techDone=rs.filter(r=>r.status==='منجز'&&r.technician_id).length;return `<div class="shift-card"><h3>${esc(sh.name_ar||('الوردية '+sh.code))} <span class="badge badge-blue">${esc(sh.code)}</span></h3><div class="shift-time">${formatShiftTime(sh.start_time)} – ${formatShiftTime(sh.end_time)}</div><div class="shift-stats"><div class="shift-stat"><small>إجمالي البلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>متبقية</small><b>${pending}</b></div><div class="shift-stat"><small>نسبة الإنجاز</small><b>${pct}%</b></div></div><div style="margin-top:10px"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><small style="color:var(--muted)">منجزة بفني مسند: ${techDone}</small></div></div>`}).join('')}</div><div class="panel" style="margin-top:16px"><div class="panel-head"><div><h3>تفاصيل البلاغات حسب الوردية</h3><p>اضغط «فتح» لتحديث الفني والإجراء التصحيحي والحالة.</p></div></div><div class="table-wrap"><table><thead><tr><th>الوردية</th><th>البلاغ</th><th>الفني</th><th>الحالة</th><th>الإجراء التصحيحي</th><th>فتح</th></tr></thead><tbody>${list.flatMap(sh=>reports.filter(r=>r.shift_code===sh.code&&riyadhInputParts(r.created_at).date===date).map(r=>`<tr><td>${esc(sh.code)}</td><td>#${r.id}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td>${esc(r.corrective_action||'—')}</td><td><button class="btn btn-small btn-soft" onclick="openReport(${r.id})">فتح</button></td></tr>`)).join('')||'<tr><td colspan="6" class="empty">لا توجد بلاغات لهذا التاريخ.</td></tr>'}</tbody></table></div></div>`;
+ box.innerHTML=`<div class="shift-grid">${list.map(sh=>{const rs=reports.filter(r=>r.shift_code===sh.code&&riyadhInputParts(r.created_at).date===date);const done=rs.filter(r=>r.status==='منجز').length;const pending=rs.length-done;const pct=rs.length?Math.round(done/rs.length*100):0;const techDone=rs.filter(r=>r.status==='منجز'&&r.technician_id).length;return `<div class="shift-card"><h3>${esc(sh.name_ar||('الوردية '+sh.code))} <span class="badge badge-blue">${esc(sh.code)}</span></h3><div class="shift-time">${sh.start_time||'—'} – ${sh.end_time||'—'}</div><div class="shift-stats"><div class="shift-stat"><small>إجمالي البلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>متبقية</small><b>${pending}</b></div><div class="shift-stat"><small>نسبة الإنجاز</small><b>${pct}%</b></div></div><div style="margin-top:10px"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><small style="color:var(--muted)">منجزة بفني مسند: ${techDone}</small></div></div>`}).join('')}</div><div class="panel" style="margin-top:16px"><div class="panel-head"><div><h3>تفاصيل البلاغات حسب الوردية</h3><p>اضغط «فتح» لتحديث الفني والإجراء التصحيحي والحالة.</p></div></div><div class="table-wrap"><table><thead><tr><th>الوردية</th><th>البلاغ</th><th>الفني</th><th>الحالة</th><th>الإجراء التصحيحي</th><th>فتح</th></tr></thead><tbody>${list.flatMap(sh=>reports.filter(r=>r.shift_code===sh.code&&riyadhInputParts(r.created_at).date===date).map(r=>`<tr><td>${esc(sh.code)}</td><td>#${r.id}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td>${esc(r.corrective_action||'—')}</td><td><button class="btn btn-small btn-soft" onclick="openReport(${r.id})">فتح</button></td></tr>`)).join('')||'<tr><td colspan="6" class="empty">لا توجد بلاغات لهذا التاريخ.</td></tr>'}</tbody></table></div></div>`;
 }
 
 function countBy(arr){const m={};arr.forEach(v=>m[v]=(m[v]||0)+1);return Object.entries(m).sort((a,b)=>b[1]-a[1])}
@@ -587,7 +569,16 @@ async function loadAll(){
  if(loadAllInFlight)return loadAllInFlight;
  loadAllInFlight=(async()=>{
  const [r,d,t,s,i,l]=await Promise.all([
-    sb.from('reports').select('*').order('created_at',{ascending:false}),
+    (async()=>{
+      const all=[];
+      for(let from=0;;from+=1000){
+        const {data,error}=await sb.from('reports').select('*').order('created_at',{ascending:false}).range(from,from+999);
+        if(error) return {data:null,error};
+        all.push(...(data||[]));
+        if((data||[]).length<1000) break;
+      }
+      return {data:all,error:null};
+    })(),
     sb.from('departments').select('*').eq('active',true).order('id'),
     sb.from('technicians').select('*').order('name'),
     sb.from('shifts').select('*').eq('active',true).order('code'),
@@ -595,7 +586,7 @@ async function loadAll(){
     sb.from('locations').select('id,main_location,sub_location,active').eq('active',true).order('main_location').order('sub_location')
   ]);
   let employeeRows=[];
-  for(let from=0;from<5000;from+=1000){const {data,error}=await sb.from('employee_directory').select('*').eq('active',true).order('employee_no').range(from,from+10000);if(error)break;employeeRows.push(...(data||[]));if((data||[]).length<1000)break}
+  for(let from=0;from<5000;from+=1000){const {data,error}=await sb.from('employee_directory').select('*').eq('active',true).order('employee_no').range(from,from+999);if(error)break;employeeRows.push(...(data||[]));if((data||[]).length<1000)break}
   reports=r.data||[];departments=dedupeDepartments(d.data||[]);technicians=t.data||[];shifts=s.data||[];employees=employeeRows;issueDeptMap={};(i.data||[]).forEach(x=>{if(x?.label)issueDeptMap[String(x.label).trim()]=x.department_id||null});issueOptions=(i.data||[]).map(x=>x.label).filter(Boolean);locations=l?.data||[];
   if(l?.error){toast('تعذر تحميل المواقع: '+l.error.message,false);locations=[];}
   await refreshSocial();
