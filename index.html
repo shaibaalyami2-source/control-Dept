@@ -335,7 +335,7 @@ async function logout(){
 }
 async function loadAll(){
  const [r,d,t,s,e,l]=await Promise.all([
-  sb.from('reports').select('*').order('created_at',{ascending:false}),
+sb.from('reports').select('*').order('created_at',{ascending:false}),
   sb.from('departments').select('id,name_ar').eq('active',true).order('id'),
   sb.from('technicians').select('id,name,employee_no,active,department_id').eq('active',true).order('id'),
   sb.from('shifts').select('*').eq('active',true).order('code'),
@@ -595,7 +595,7 @@ async function loadAll(){
     sb.from('locations').select('id,main_location,sub_location,active').eq('active',true).order('main_location').order('sub_location')
   ]);
   let employeeRows=[];
-  for(let from=0;from<5000;from+=1000){const {data,error}=await sb.from('employee_directory').select('*').eq('active',true).order('employee_no').range(from,from+999);if(error)break;employeeRows.push(...(data||[]));if((data||[]).length<1000)break}
+  for(let from=0;from<5000;from+=1000){const {data,error}=await sb.from('employee_directory').select('*').eq('active',true).order('employee_no').range(from,from+10000);if(error)break;employeeRows.push(...(data||[]));if((data||[]).length<1000)break}
   reports=r.data||[];departments=dedupeDepartments(d.data||[]);technicians=t.data||[];shifts=s.data||[];employees=employeeRows;issueDeptMap={};(i.data||[]).forEach(x=>{if(x?.label)issueDeptMap[String(x.label).trim()]=x.department_id||null});issueOptions=(i.data||[]).map(x=>x.label).filter(Boolean);locations=l?.data||[];
   if(l?.error){toast('تعذر تحميل المواقع: '+l.error.message,false);locations=[];}
   await refreshSocial();
