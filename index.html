@@ -65,7 +65,6 @@ table{width:100%;border-collapse:collapse;min-width:1080px;background:#fff}th,td
 .shift-card h3{margin:0 0 4px}.shift-time{font-size:12px;color:var(--muted)}.shift-stats{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.shift-stat{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}.shift-stat b{display:block;font-size:18px}
 .bar-row{display:grid;grid-template-columns:120px 1fr 42px;gap:8px;align-items:center;margin:10px 0;font-size:12px}.bar-bg{height:10px;background:#edf1f6;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--blue2));border-radius:999px}
 .metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.metric small{color:var(--muted)}.metric strong{display:block;font-size:23px;margin-top:6px}
-.leave-balance-admin{display:grid;gap:14px}.leave-user-card{border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#fff,#fbfcfe);overflow:hidden}.leave-user-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;background:#f7f9fc;border-bottom:1px solid var(--line)}.leave-user-name{font-weight:900;font-size:15px}.leave-user-meta{font-size:11px;color:var(--muted);margin-top:3px}.leave-balance-grid{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:10px;padding:14px}.leave-balance-item{border:1px solid #e4eaf1;border-radius:12px;padding:12px;background:#fff}.leave-balance-item .lb-title{font-weight:800;font-size:12px;margin-bottom:9px}.leave-balance-fields{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.leave-balance-fields input{width:90px}.leave-balance-stats{margin-top:9px;font-size:11px;color:var(--muted);line-height:1.8}.leave-balance-available{font-weight:900;color:var(--text)}
 .search-box{display:flex;gap:8px;margin-bottom:12px}.search-box input{flex:1}
 .modal{position:fixed;inset:0;background:rgba(5,25,44,.58);display:flex;justify-content:center;align-items:center;padding:18px;z-index:100}
 .modal-box{background:#fff;width:min(900px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:20px;position:relative;box-shadow:0 24px 70px rgba(0,0,0,.25)}
@@ -76,9 +75,7 @@ table{width:100%;border-collapse:collapse;min-width:1080px;background:#fff}th,td
 .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(circle at 20% 10%,#2a80ef55,transparent 32%),linear-gradient(135deg,#0d2b46,#1769e0)}
 .login-card{width:min(470px,100%);background:#fff;border-radius:22px;padding:26px;box-shadow:0 26px 90px rgba(0,0,0,.2)}.login-brand{display:flex;gap:13px;align-items:center;margin-bottom:18px}.login-logo{width:70px;height:70px;object-fit:contain;border-radius:16px;background:#fff;border:1px solid var(--line);padding:6px}.login-card h1{margin:0;font-size:25px}.login-card p{color:var(--muted);margin:7px 0 18px}.login-form{display:grid;gap:11px}
 .qr-box{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:12px}#qrCanvas img{border:8px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,.12)}
-.print-sheet{display:none}.next-report-card{min-width:180px;padding:10px 14px;border:1px solid #c9d8ee;background:#eef5ff;border-radius:14px;text-align:center}.next-report-card small{display:block;color:#365f91;font-weight:800}.next-report-card strong{display:block;font-size:25px;line-height:1.2;color:#123f7a;margin:2px 0}.next-report-card span{display:block;font-size:10px;color:#6b7f98}@media(max-width:1100px){.leave-balance-grid{grid-template-columns:repeat(2,minmax(180px,1fr))}}
-@media(max-width:640px){.leave-balance-grid{grid-template-columns:1fr}.leave-user-head{align-items:flex-start}}
-@media(max-width:700px){.next-report-card{width:100%;margin-top:10px}}
+.print-sheet{display:none}.next-report-card{min-width:180px;padding:10px 14px;border:1px solid #c9d8ee;background:#eef5ff;border-radius:14px;text-align:center}.next-report-card small{display:block;color:#365f91;font-weight:800}.next-report-card strong{display:block;font-size:25px;line-height:1.2;color:#123f7a;margin:2px 0}.next-report-card span{display:block;font-size:10px;color:#6b7f98}@media(max-width:700px){.next-report-card{width:100%;margin-top:10px}}
 @media(max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}.metrics-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}.form-grid,.metrics-grid,.detail-grid,.shift-grid{grid-template-columns:1fr}.span-2{grid-column:auto}.top{align-items:flex-start;flex-direction:column}.brand h1{font-size:18px}}
 
@@ -263,6 +260,18 @@ function translateNumbers(){const locale=isEnglish?'en-US':'ar-SA-u-nu-arab';doc
 
 function riyadhInputParts(v){if(!v)return {date:'',time:''};const parts=new Intl.DateTimeFormat('en-CA-u-ca-gregory',{calendar:'gregory',timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(v));const o={};for(const x of parts)if(x.type!=='literal')o[x.type]=x.value;return {date:`${o.year}-${o.month}-${o.day}`,time:`${o.hour}:${o.minute}`}}
 function riyadhDateTimeToISO(d,t){return new Date(`${d}T${t}:00+03:00`).toISOString()}
+function shiftCodeForTime(v){
+  const m=String(v||'').match(/^(\d{1,2}):(\d{2})/);
+  if(!m)return 'A';
+  const mins=Number(m[1])*60+Number(m[2]);
+  if(mins>=23*60 || mins<7*60)return 'C';
+  if(mins>=15*60)return 'B';
+  return 'A';
+}
+function effectiveShiftCode(r){
+  try{return shiftCodeForTime(riyadhInputParts(r?.created_at).time)}
+  catch(e){return shiftCodeForTime(r?.shift_code)}
+}
 const fmtMin=m=>{if(m==null||isNaN(m))return'—';m=Math.round(m);if(m<60)return `${m} د`;const h=Math.floor(m/60),mm=m%60;return `${h} س ${mm?mm+' د':''}`};
 const nowISO=()=>new Date().toISOString();
 function statusClass(s){return s==='منجز'?'status-done':s==='معلق'?'status-pending':s==='ملغى'?'status-cancel':'status-work'}
@@ -430,7 +439,7 @@ async function deleteLocation(id){const row=locations.find(x=>x.id===id);if(!row
 function renderNew(){const el=document.getElementById('new');if(!el)return;el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>تسجيل بلاغ جديد</h2><p>أدخل الرقم الوظيفي فقط؛ سيجلب النظام الاسم والتحويلة تلقائيًا. وإذا لم يكن الرقم موجودًا يمكنك إدخالهما وسيتم حفظهما في الدليل.</p></div></div><form id="newForm"><div class="form-grid"><label>رقم الموظف<input id="fEmployee" required oninput="lookupEmployee()"></label><label>طالب الخدمة<input id="fRequester" required></label><label>التحويلة<input id="fExt"></label><div id="employeeLookup" class="span-4"></div><label>تاريخ البلاغ<input id="fDate" type="date"></label><label>وقت البلاغ<input id="fTime" type="time"></label><label>الموقع الرئيسي<input id="fMainLocation" required placeholder="مثال: الطوارئ"></label><label>الموقع الفرعي<input id="fSubLocation"></label><label>القسم<input id="fDept" required><span style="font-size:11px;color:var(--muted)">يمكن كتابة اسم القسم مباشرة</span></label><label>الأولوية<select id="fPriority"><option>عادي</option><option>عاجل</option><option>طوارئ</option></select></label><label>نوع البلاغ<select id="fIssueType"><option>تصحيحي</option><option>وقائي</option><option>طوارئ</option></select></label><label class="span-4">وصف المشكلة<input id="fDesc" list="issueList" required autocomplete="off" placeholder="اكتب للبحث أو اختر من القائمة، ويمكنك كتابة أي وصف يدويًا…"><datalist id="issueList">${renderIssueDatalist()}</datalist><span style="font-size:11px;color:var(--muted)">ابحث داخل العبارات الجاهزة، وإذا لم تجد المشكلة اكتبها مباشرة.</span></label></div><div class="modal-actions"><button class="btn btn-primary" type="submit">حفظ البلاغ</button><button class="btn" type="button" onclick="document.getElementById('newForm').reset();setNewDefaults()">إعادة ضبط</button></div><div id="newMsg" class="msg"></div></form></div>`;document.getElementById('newForm').onsubmit=createReport;setNewDefaults();lookupEmployee()}
 function setNewDefaults(){const now=riyadhInputParts(new Date().toISOString()),d=document.getElementById('fDate'),t=document.getElementById('fTime');if(d)d.value=now.date;if(t)t.value=now.time}
 function currentShiftCode(){const h=new Date().getHours();return h>=7&&h<15?'A':h>=15&&h<23?'B':'C'}
-async function createReport(e){e.preventDefault();const msg=document.getElementById('newMsg');const deptName=document.getElementById('fDept').value.trim();const dept=departments.find(d=>d.name_ar===deptName)||departments.find(d=>d.name_ar.includes(deptName)||deptName.includes(d.name_ar));const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10),t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:dept?.id||null,responsible_department_id:dept?.id||null,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};const empNo=payload.employee_no,empName=payload.requester,empExt=payload.ext;await ensureEmployee(empNo,empName,empExt);const {data,error}=await sb.from('reports').insert(payload).select('*').single();if(error){msg.className='msg show err';msg.textContent='تعذر حفظ البلاغ: '+error.message;return}try{if(typeof audit==='function')await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم')}catch(auditErr){console.warn('Audit skipped after report creation:',auditErr?.message||auditErr)}msg.className='msg show ok';msg.textContent=`تم تسجيل البلاغ رقم #${data.id} بنجاح.`;document.getElementById('newForm').reset();setNewDefaults();lookupEmployee();await loadAll();showTab('control')}
+async function createReport(e){e.preventDefault();const msg=document.getElementById('newMsg');const deptName=document.getElementById('fDept').value.trim();const dept=departments.find(d=>d.name_ar===deptName)||departments.find(d=>d.name_ar.includes(deptName)||deptName.includes(d.name_ar));const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10),t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:dept?.id||null,responsible_department_id:dept?.id||null,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,shift_code:shiftCodeForTime(t),started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};const empNo=payload.employee_no,empName=payload.requester,empExt=payload.ext;await ensureEmployee(empNo,empName,empExt);const {data,error}=await sb.from('reports').insert(payload).select('*').single();if(error){msg.className='msg show err';msg.textContent='تعذر حفظ البلاغ: '+error.message;return}try{if(typeof audit==='function')await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم')}catch(auditErr){console.warn('Audit skipped after report creation:',auditErr?.message||auditErr)}msg.className='msg show ok';msg.textContent=`تم تسجيل البلاغ رقم #${data.id} بنجاح.`;document.getElementById('newForm').reset();setNewDefaults();lookupEmployee();await loadAll();showTab('control')}
 
 function renderTracking(){const el=document.getElementById('tracking');if(!el)return;el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>متابعة وتحديث البلاغات</h2><p>هنا تستطيع إسناد الفني وتغيير الحالة وتوثيق الإجراءات.</p></div></div><div class="filters"><label>الحالة<select id="trackStatus" onchange="renderTrackingTable()"><option value="">الكل</option><option>جاري العمل</option><option>معلق</option><option>منجز</option><option>ملغى</option></select></label><label>الأولوية<select id="trackPriority" onchange="renderTrackingTable()"><option value="">كل الأولويات</option><option>طوارئ</option><option>عاجل</option><option>عادي</option></select></label></div><div id="trackingTable"></div></div>`;renderTrackingTable()}
 function renderTrackingTable(){const box=document.getElementById('trackingTable');if(!box)return;const st=document.getElementById('trackStatus').value,pr=document.getElementById('trackPriority').value;const rows=reports.filter(r=>(!st||r.status===st)&&(!pr||r.priority===pr));box.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>البلاغ</th><th>التاريخ</th><th>النوع/الأولوية</th><th>الموقع</th><th>الفني</th><th>الإجراء التصحيحي</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>#${r.id}</b><br><small>${esc(r.requester)}</small></td><td>${fmt(r.created_at)}</td><td><span class="badge ${priorityClass(r.priority)}">${esc(r.priority)}</span><br><small>${esc(r.issue_type)}</small></td><td>${esc(r.main_location)}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td>${esc(r.corrective_action||'—')}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td><button class="btn btn-small btn-soft" onclick="openReport(${r.id})">فتح</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">لا توجد نتائج.</div>'}
@@ -489,7 +498,7 @@ async function saveReport(id){
  syncTechnicianPicker();
  const status=document.getElementById('mStatus').value,tech=document.getElementById('mTech').value?Number(document.getElementById('mTech').value):null,dept=document.getElementById('mDept').value?Number(document.getElementById('mDept').value):null,priority=document.getElementById('mPriority').value,issueType=document.getElementById('mIssueType').value,date=document.getElementById('mDate').value,time=document.getElementById('mTime').value,correctiveAction=document.getElementById('mCorrectiveAction').value.trim()||null;
  if(!date||!time){document.getElementById('modalMsg').className='msg show err';document.getElementById('modalMsg').textContent='التاريخ والوقت مطلوبان.';return}
- let patch={requester:document.getElementById('mRequester').value.trim(),ext:document.getElementById('mExt').value.trim()||null,created_at:riyadhDateTimeToISO(date,time),main_location:document.getElementById('mMainLocation').value.trim(),sub_location:document.getElementById('mSubLocation').value.trim()||null,description:document.getElementById('mDesc').value.trim(),status,technician_id:tech,responsible_department_id:dept,department_id:dept,priority,issue_type:issueType,corrective_action:correctiveAction,updated_at:nowISO()};
+ let patch={requester:document.getElementById('mRequester').value.trim(),ext:document.getElementById('mExt').value.trim()||null,created_at:riyadhDateTimeToISO(date,time),main_location:document.getElementById('mMainLocation').value.trim(),sub_location:document.getElementById('mSubLocation').value.trim()||null,description:document.getElementById('mDesc').value.trim(),status,technician_id:tech,responsible_department_id:dept,department_id:dept,priority,issue_type:issueType,corrective_action:correctiveAction,shift_code:shiftCodeForTime(time),updated_at:nowISO()};
  if(tech && !r.assigned_at)patch.assigned_at=nowISO();if(status==='جاري العمل'&&!r.started_at)patch.started_at=nowISO();if(status==='منجز'&&r.status!=='منجز'){patch.completed_at=nowISO();patch.closed_at=nowISO()}else if(status!=='منجز'&&r.status==='منجز'){patch.completed_at=null;patch.closed_at=null}
  const {data,error}=await sb.from('reports').update(patch).eq('id',id).select('*').single();
  if(error){document.getElementById('modalMsg').className='msg show err';document.getElementById('modalMsg').textContent='تعذر التحديث: '+error.message;return}
@@ -591,7 +600,7 @@ async function loadAll(){
   ]);
   let employeeRows=[];
   for(let from=0;from<5000;from+=1000){const {data,error}=await sb.from('employee_directory').select('*').eq('active',true).order('employee_no').range(from,from+999);if(error)break;employeeRows.push(...(data||[]));if((data||[]).length<1000)break}
-  reports=r.data||[];departments=dedupeDepartments(d.data||[]);technicians=t.data||[];shifts=s.data||[];employees=employeeRows;issueDeptMap={};(i.data||[]).forEach(x=>{if(x?.label)issueDeptMap[String(x.label).trim()]=x.department_id||null});issueOptions=(i.data||[]).map(x=>x.label).filter(Boolean);locations=l?.data||[];
+  reports=(r.data||[]).map(x=>({...x,shift_code:effectiveShiftCode(x)}));departments=dedupeDepartments(d.data||[]);technicians=t.data||[];shifts=s.data||[];employees=employeeRows;issueDeptMap={};(i.data||[]).forEach(x=>{if(x?.label)issueDeptMap[String(x.label).trim()]=x.department_id||null});issueOptions=(i.data||[]).map(x=>x.label).filter(Boolean);locations=l?.data||[];
   if(l?.error){toast('تعذر تحميل المواقع: '+l.error.message,false);locations=[];}
   await refreshSocial();
   updateDashboard();
@@ -687,7 +696,7 @@ async function refreshNextReportNumber(){const box=document.getElementById('next
 async function createReport(e){
  e.preventDefault();const msg=document.getElementById('newMsg');
  const deptId=Number(document.getElementById('fDept').value);const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10),t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);
- const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
+ const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,shift_code:shiftCodeForTime(t),started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
  await ensureEmployee(payload.employee_no,payload.requester,payload.ext);
  const {data,error}=await sb.from('reports').insert(payload).select('*').single();if(error){msg.className='msg show err';msg.textContent='تعذر حفظ البلاغ: '+error.message;return}
  try{await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم')}catch(auditErr){console.warn('Audit skipped after report creation:',auditErr?.message||auditErr)}msg.className='msg show ok';msg.textContent=`تم تسجيل البلاغ رقم #${data.id} بنجاح.`;document.getElementById('newForm').reset();setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelect('fMainLocation','fSubLocation');await loadAll();showTab('control')
@@ -738,7 +747,7 @@ function renderRequests(){const el=document.getElementById('requests');if(!el)re
 function statusLeaveText(s){return s==='approved'?'مقبول':s==='rejected'?'مرفوض':s==='cancelled'?'ملغى':'معلق'}
 function renderMyLeaveTable(rows){if(!rows.length)return '<div class="empty">لا توجد طلبات إجازة حتى الآن.</div>';return `<div class="table-wrap"><table><thead><tr><th>النوع</th><th>الفترة</th><th>الأيام</th><th>الحالة</th><th>الطلب</th><th>الملاحظة</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(leaveTypeLabel(r.leave_type))}</td><td>${r.start_date} → ${r.end_date}</td><td>${r.days}</td><td><span class="badge ${r.status==='approved'?'status-done':r.status==='rejected'?'status-cancel':'status-pending'}">${statusLeaveText(r.status)}</span></td><td>${fmt(r.created_at)}</td><td>${esc(r.reviewer_note||'—')}</td></tr>`).join('')}</tbody></table></div>`}
 function renderPendingLeaveTable(rows){if(!rows.length)return '<div class="empty">لا توجد طلبات معلقة حاليًا.</div>';return `<div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>النوع</th><th>الفترة</th><th>الأيام</th><th>الملاحظة</th><th>إجراء</th></tr></thead><tbody>${rows.map(r=>{const u=(window._profiles||[]).find(x=>x.id===r.requester_id);return `<tr><td>${esc(u?.full_name||r.requester_id)}</td><td>${esc(leaveTypeLabel(r.leave_type))}</td><td>${r.start_date} → ${r.end_date}</td><td>${r.days}</td><td>${esc(r.note||'—')}</td><td><button class="btn btn-small btn-primary" onclick="reviewLeave(${r.id},'approved')">اعتماد</button> <button class="btn btn-small btn-danger" onclick="reviewLeave(${r.id},'rejected')">رفض</button></td></tr>`}).join('')}</tbody></table></div>`}
-function renderAdminBalances(){const profiles=window._profiles||[];if(!profiles.length)return '<div class="empty">لا يوجد مستخدمون.</div>';return `<div class="leave-balance-admin">${profiles.map(u=>{const role=u.display_title||u.role||'مستخدم';return `<section class="leave-user-card"><div class="leave-user-head"><div><div class="leave-user-name">${esc(u.full_name)}</div><div class="leave-user-meta">${esc(role)}</div></div><span class="badge status-work">أرصدة الإجازات</span></div><div class="leave-balance-grid">${LEAVE_TYPES.map(([k,l])=>{const b=leaveBalances.find(x=>x.user_id===u.id&&x.leave_type===k)||{};return `<div class="leave-balance-item"><div class="lb-title">${l}</div><div class="leave-balance-fields"><input type="number" min="0" id="bal_${u.id}_${k}" value="${b.allocated_days||0}"><button class="btn btn-small btn-primary" onclick="saveLeaveBalance('${u.id}','${k}')">حفظ</button></div><div class="leave-balance-stats"><div>المخصص: <b>${b.allocated_days||0}</b></div><div>المستخدم: <b>${b.used_days||0}</b> · المحجوز: <b>${b.reserved_days||0}</b></div><div class="leave-balance-available">المتاح: ${leaveAvailable(b)}</div></div></div>`}).join('')}</div></section>`}).join('')}</div>`}
+function renderAdminBalances(){const profiles=window._profiles||[];if(!profiles.length)return '<div class="empty">لا يوجد مستخدمون.</div>';return `<div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>النوع</th><th>المخصص</th><th>المستخدم</th><th>المحجوز</th><th>المتاح</th><th>حفظ</th></tr></thead><tbody>${profiles.flatMap(u=>LEAVE_TYPES.map(([k,l])=>{const b=leaveBalances.find(x=>x.user_id===u.id&&x.leave_type===k)||{};return `<tr><td>${esc(u.full_name)}</td><td>${l}</td><td><input style="width:90px" type="number" min="0" id="bal_${u.id}_${k}" value="${b.allocated_days||0}"></td><td>${b.used_days||0}</td><td>${b.reserved_days||0}</td><td>${leaveAvailable(b)}</td><td><button class="btn btn-small" onclick="saveLeaveBalance('${u.id}','${k}')">حفظ</button></td></tr>`})).join('')}</tbody></table></div>`}
 async function submitLeave(ev){ev.preventDefault();const btn=document.getElementById('leaveSubmitBtn'),msg=document.getElementById('leaveMsg'),type=document.getElementById('leaveType').value,start=document.getElementById('leaveStart').value,end=document.getElementById('leaveEnd').value,note=document.getElementById('leaveNote').value.trim();if(!start||!end){msg.className='msg show err';msg.textContent='حدد تاريخ البداية والنهاية.';return}if(end<start){msg.className='msg show err';msg.textContent='تاريخ النهاية يجب أن يكون بعد أو مساويًا لتاريخ البداية.';return}btn.disabled=true;btn.textContent='جاري إرسال الطلب…';const {error}=await sb.rpc('submit_leave_request',{p_leave_type:type,p_start_date:start,p_end_date:end,p_note:note||null});if(error){msg.className='msg show err';msg.textContent='تعذر إرسال الطلب: '+error.message;btn.disabled=false;btn.textContent='إرسال طلب الإجازة';return}msg.className='msg show ok';msg.textContent='تم إرسال طلب الإجازة وبانتظار اعتماد رئيس القسم.';document.getElementById('leaveForm').reset();await refreshLeaveData();renderRequests()}
 async function reviewLeave(id,status){if(!isAdmin()){toast('اعتماد أو رفض الإجازات متاح للإدارة فقط.',false);return}const note=prompt(status==='approved'?'ملاحظة الاعتماد (اختياري):':'سبب الرفض (اختياري):','');if(note===null)return;const args={p_request_id:id,p_reviewer_note:note.trim()||null,p_status:status};let result=await sb.rpc('process_leave_review',args);if(result.error && /schema cache|Could not find the function/i.test(result.error.message)){await fetch(SUPABASE_URL+'/rest/v1/',{method:'HEAD',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+(sb.auth.getSession?((await sb.auth.getSession()).data.session?.access_token||SUPABASE_KEY):SUPABASE_KEY)}}).catch(()=>{});await new Promise(r=>setTimeout(r,300));result=await sb.rpc('process_leave_review',args)}if(result.error){toast('تعذر تحديث الطلب: '+result.error.message,false);return}toast(status==='approved'?'تم اعتماد الإجازة وإرسال الإشعار للمستخدم.':'تم رفض الإجازة وإرسال الإشعار للمستخدم.');await refreshLeaveData();renderRequests()}
 async function saveLeaveBalance(userId,type){const days=Number(document.getElementById(`bal_${userId}_${type}`)?.value||0);const {error}=await sb.rpc('set_leave_balance',{p_user_id:userId,p_leave_type:type,p_allocated_days:days});if(error){toast('تعذر حفظ الرصيد: '+error.message,false);return}toast('تم حفظ رصيد الإجازة');await refreshLeaveData();renderRequests()}
@@ -901,7 +910,7 @@ async function start(){
       const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10);
       const t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);
       const created=new Date(`${d}T${t}`).toISOString();
-      const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
+      const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,shift_code:shiftCodeForTime(t),started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
       await ensureEmployee(payload.employee_no,payload.requester,payload.ext);
       await refreshNextReportNumber();
       const {data,error}=await sb.from('reports').insert(payload).select('*').single();
@@ -1674,7 +1683,85 @@ start();
   if(oldRenderApp)window.renderApp=function(){oldRenderApp();setTimeout(ensureAdminButton,0)};
   setTimeout(()=>{ensureAdminButton();translateAll()},100);
 })();
+</script>
 
+<script>
+/* ===== MINIMAL FIX: SHIFT BY TIME + ROBUST USER PERFORMANCE ===== */
+(function(){
+  // Re-apply the effective shift locally after every data load.
+  const baseLoadAll=window.loadAll;
+  if(baseLoadAll && !window.__shiftPerfFixLoadWrapped){
+    window.__shiftPerfFixLoadWrapped=true;
+    window.loadAll=async function(){
+      await baseLoadAll();
+      try{
+        reports=(reports||[]).map(r=>({...r,shift_code:effectiveShiftCode(r)}));
+      }catch(e){console.warn('shift normalization:',e)}
+    };
+  }
+
+  // Make the user-performance count resilient to either created_by/owner_id,
+  // and use the creation audit as a fallback without double-counting.
+  window.renderPerformance=async function(){
+    const el=document.getElementById('performance'); if(!el)return;
+    if(!isAdmin()){el.innerHTML='<div class="panel"><div class="empty">غير مصرح.</div></div>';return;}
+    const def=(()=>{try{return riyadhInputParts(nowISO()).date}catch(e){return new Date().toISOString().slice(0,10)}})();
+    el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>📊 أداء المستخدمين</h2><p>مستخدمو النظام فقط، مع استبعاد المدراء. يتم احتساب البلاغ على المستخدم الذي سجله فعليًا.</p></div></div>
+      <div class="filters"><label>من تاريخ<input id="userPerfFrom" type="date" value="${def}"></label><label>إلى تاريخ<input id="userPerfTo" type="date" value="${def}"></label><button class="btn btn-primary" id="userPerfApply">تطبيق</button><button class="btn btn-soft" id="userPerfToday">اليوم</button></div>
+      <div id="userPerfBody"><div class="empty">جاري تحميل الأداء…</div></div></div>`;
+
+    const render=async()=>{
+      const from=document.getElementById('userPerfFrom')?.value||'',to=document.getElementById('userPerfTo')?.value||'';
+      const body=document.getElementById('userPerfBody'); if(!body)return;
+      body.innerHTML='<div class="empty">جاري حساب الأداء…</div>';
+      const [{data:users,error:ue},{data:audits,error:ae}]=await Promise.all([
+        sb.from('profiles').select('id,employee_no,full_name,role,display_title,active').order('full_name'),
+        sb.from('report_audit_logs').select('*').order('created_at',{ascending:false}).limit(10000)
+      ]);
+      if(ue||ae){
+        body.innerHTML=`<div class="msg show err">تعذر تحميل أداء المستخدمين: ${safeEsc((ue||ae)?.message||'خطأ غير معروف')}</div>`;
+        return;
+      }
+      const allUsers=(users||[]).filter(u=>u.active!==false && String(u.role||'').toLowerCase()!=='admin');
+      const logs=audits||[];
+      const byId=new Map((reports||[]).map(r=>[String(r.id),r]));
+      const rows=allUsers.map(u=>{
+        const openedIds=new Set();
+
+        // Primary source: the user who actually created/owns the report.
+        (reports||[]).forEach(r=>{
+          if((String(r.created_by||'')===String(u.id) || String(r.owner_id||'')===String(u.id))
+             && inRange(r.created_at,from,to)){
+            openedIds.add(String(r.id));
+          }
+        });
+
+        // Fallback: creation audit authored by this user, useful for records
+        // where created_by/owner_id was not populated.
+        logs.forEach(e=>{
+          if(String(e.action||'').includes('إنشاء') && actorMatches(e,u)){
+            const r=byId.get(String(e.report_id));
+            if(r && inRange(r.created_at,from,to)) openedIds.add(String(r.id));
+          }
+        });
+
+        const closures=logs.filter(e=>e.to_status==='منجز'&&actorMatches(e,u)&&inRange(e.changed_at||e.created_at,from,to));
+        return {u,opened:openedIds.size,closed:closures.length};
+      }).sort((a,b)=>b.opened-a.opened||b.closed-a.closed||String(a.u.full_name||'').localeCompare(String(b.u.full_name||''),'ar'));
+
+      const totalOpen=rows.reduce((a,x)=>a+x.opened,0),totalClosed=rows.reduce((a,x)=>a+x.closed,0);
+      body.innerHTML=`<div class="metrics-grid" style="margin-bottom:14px"><div class="metric"><small>مستخدمو النظام</small><strong>${rows.length}</strong></div><div class="metric"><small>فتح بلاغات</small><strong>${totalOpen}</strong></div><div class="metric"><small>إغلاق بلاغات</small><strong>${totalClosed}</strong></div><div class="metric"><small>الفترة</small><strong style="font-size:16px">${safeEsc(from||'—')} — ${safeEsc(to||'—')}</strong></div></div>
+        <div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>الرقم الوظيفي</th><th>فتح بلاغات</th><th>إغلاق بلاغات</th></tr></thead><tbody>${rows.length?rows.map(x=>`<tr><td><b>${safeEsc(x.u.full_name||'—')}</b><br><small>${safeEsc(x.u.display_title||'')}</small></td><td>${safeEsc(x.u.employee_no||'—')}</td><td><b>${x.opened}</b></td><td><b>${x.closed}</b></td></tr>`).join(''):'<tr><td colspan="4" class="empty">لا توجد بيانات مستخدمين ضمن الفترة المحددة.</td></tr>'}</tbody></table></div>`;
+    };
+    document.getElementById('userPerfApply')?.addEventListener('click',render);
+    document.getElementById('userPerfToday')?.addEventListener('click',()=>{
+      document.getElementById('userPerfFrom').value=def;
+      document.getElementById('userPerfTo').value=def;
+      render();
+    });
+    await render();
+  };
+})();
 </script>
 
 </body>
