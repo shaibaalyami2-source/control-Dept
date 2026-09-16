@@ -1135,6 +1135,7 @@ start();
   const oldShowTab=window.showTab;
   window.showTab=function(name){
     if(name==='performance'){
+      if(!isAdmin()){toast('أداء الموظفين مخصص لرئيس القسم والإدارة فقط.',false);return;}
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',false));
       document.querySelectorAll('.tab-panel').forEach(s=>s.classList.add('hidden'));
       const el=document.getElementById('performance'); if(el){el.classList.remove('hidden');renderPerformance();}
