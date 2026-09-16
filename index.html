@@ -260,18 +260,6 @@ function translateNumbers(){const locale=isEnglish?'en-US':'ar-SA-u-nu-arab';doc
 
 function riyadhInputParts(v){if(!v)return {date:'',time:''};const parts=new Intl.DateTimeFormat('en-CA-u-ca-gregory',{calendar:'gregory',timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(v));const o={};for(const x of parts)if(x.type!=='literal')o[x.type]=x.value;return {date:`${o.year}-${o.month}-${o.day}`,time:`${o.hour}:${o.minute}`}}
 function riyadhDateTimeToISO(d,t){return new Date(`${d}T${t}:00+03:00`).toISOString()}
-function shiftCodeForTime(v){
-  const m=String(v||'').match(/^(\d{1,2}):(\d{2})/);
-  if(!m)return 'A';
-  const mins=Number(m[1])*60+Number(m[2]);
-  if(mins>=23*60 || mins<7*60)return 'C';
-  if(mins>=15*60)return 'B';
-  return 'A';
-}
-function effectiveShiftCode(r){
-  try{return shiftCodeForTime(riyadhInputParts(r?.created_at).time)}
-  catch(e){return shiftCodeForTime(r?.shift_code)}
-}
 const fmtMin=m=>{if(m==null||isNaN(m))return'—';m=Math.round(m);if(m<60)return `${m} د`;const h=Math.floor(m/60),mm=m%60;return `${h} س ${mm?mm+' د':''}`};
 const nowISO=()=>new Date().toISOString();
 function statusClass(s){return s==='منجز'?'status-done':s==='معلق'?'status-pending':s==='ملغى'?'status-cancel':'status-work'}
@@ -439,7 +427,7 @@ async function deleteLocation(id){const row=locations.find(x=>x.id===id);if(!row
 function renderNew(){const el=document.getElementById('new');if(!el)return;el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>تسجيل بلاغ جديد</h2><p>أدخل الرقم الوظيفي فقط؛ سيجلب النظام الاسم والتحويلة تلقائيًا. وإذا لم يكن الرقم موجودًا يمكنك إدخالهما وسيتم حفظهما في الدليل.</p></div></div><form id="newForm"><div class="form-grid"><label>رقم الموظف<input id="fEmployee" required oninput="lookupEmployee()"></label><label>طالب الخدمة<input id="fRequester" required></label><label>التحويلة<input id="fExt"></label><div id="employeeLookup" class="span-4"></div><label>تاريخ البلاغ<input id="fDate" type="date"></label><label>وقت البلاغ<input id="fTime" type="time"></label><label>الموقع الرئيسي<input id="fMainLocation" required placeholder="مثال: الطوارئ"></label><label>الموقع الفرعي<input id="fSubLocation"></label><label>القسم<input id="fDept" required><span style="font-size:11px;color:var(--muted)">يمكن كتابة اسم القسم مباشرة</span></label><label>الأولوية<select id="fPriority"><option>عادي</option><option>عاجل</option><option>طوارئ</option></select></label><label>نوع البلاغ<select id="fIssueType"><option>تصحيحي</option><option>وقائي</option><option>طوارئ</option></select></label><label class="span-4">وصف المشكلة<input id="fDesc" list="issueList" required autocomplete="off" placeholder="اكتب للبحث أو اختر من القائمة، ويمكنك كتابة أي وصف يدويًا…"><datalist id="issueList">${renderIssueDatalist()}</datalist><span style="font-size:11px;color:var(--muted)">ابحث داخل العبارات الجاهزة، وإذا لم تجد المشكلة اكتبها مباشرة.</span></label></div><div class="modal-actions"><button class="btn btn-primary" type="submit">حفظ البلاغ</button><button class="btn" type="button" onclick="document.getElementById('newForm').reset();setNewDefaults()">إعادة ضبط</button></div><div id="newMsg" class="msg"></div></form></div>`;document.getElementById('newForm').onsubmit=createReport;setNewDefaults();lookupEmployee()}
 function setNewDefaults(){const now=riyadhInputParts(new Date().toISOString()),d=document.getElementById('fDate'),t=document.getElementById('fTime');if(d)d.value=now.date;if(t)t.value=now.time}
 function currentShiftCode(){const h=new Date().getHours();return h>=7&&h<15?'A':h>=15&&h<23?'B':'C'}
-async function createReport(e){e.preventDefault();const msg=document.getElementById('newMsg');const deptName=document.getElementById('fDept').value.trim();const dept=departments.find(d=>d.name_ar===deptName)||departments.find(d=>d.name_ar.includes(deptName)||deptName.includes(d.name_ar));const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10),t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:dept?.id||null,responsible_department_id:dept?.id||null,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,shift_code:shiftCodeForTime(t),started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};const empNo=payload.employee_no,empName=payload.requester,empExt=payload.ext;await ensureEmployee(empNo,empName,empExt);const {data,error}=await sb.from('reports').insert(payload).select('*').single();if(error){msg.className='msg show err';msg.textContent='تعذر حفظ البلاغ: '+error.message;return}try{if(typeof audit==='function')await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم')}catch(auditErr){console.warn('Audit skipped after report creation:',auditErr?.message||auditErr)}msg.className='msg show ok';msg.textContent=`تم تسجيل البلاغ رقم #${data.id} بنجاح.`;document.getElementById('newForm').reset();setNewDefaults();lookupEmployee();await loadAll();showTab('control')}
+async function createReport(e){e.preventDefault();const msg=document.getElementById('newMsg');const deptName=document.getElementById('fDept').value.trim();const dept=departments.find(d=>d.name_ar===deptName)||departments.find(d=>d.name_ar.includes(deptName)||deptName.includes(d.name_ar));const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10),t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:dept?.id||null,responsible_department_id:dept?.id||null,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};const empNo=payload.employee_no,empName=payload.requester,empExt=payload.ext;await ensureEmployee(empNo,empName,empExt);const {data,error}=await sb.from('reports').insert(payload).select('*').single();if(error){msg.className='msg show err';msg.textContent='تعذر حفظ البلاغ: '+error.message;return}try{if(typeof audit==='function')await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم')}catch(auditErr){console.warn('Audit skipped after report creation:',auditErr?.message||auditErr)}msg.className='msg show ok';msg.textContent=`تم تسجيل البلاغ رقم #${data.id} بنجاح.`;document.getElementById('newForm').reset();setNewDefaults();lookupEmployee();await loadAll();showTab('control')}
 
 function renderTracking(){const el=document.getElementById('tracking');if(!el)return;el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>متابعة وتحديث البلاغات</h2><p>هنا تستطيع إسناد الفني وتغيير الحالة وتوثيق الإجراءات.</p></div></div><div class="filters"><label>الحالة<select id="trackStatus" onchange="renderTrackingTable()"><option value="">الكل</option><option>جاري العمل</option><option>معلق</option><option>منجز</option><option>ملغى</option></select></label><label>الأولوية<select id="trackPriority" onchange="renderTrackingTable()"><option value="">كل الأولويات</option><option>طوارئ</option><option>عاجل</option><option>عادي</option></select></label></div><div id="trackingTable"></div></div>`;renderTrackingTable()}
 function renderTrackingTable(){const box=document.getElementById('trackingTable');if(!box)return;const st=document.getElementById('trackStatus').value,pr=document.getElementById('trackPriority').value;const rows=reports.filter(r=>(!st||r.status===st)&&(!pr||r.priority===pr));box.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>البلاغ</th><th>التاريخ</th><th>النوع/الأولوية</th><th>الموقع</th><th>الفني</th><th>الإجراء التصحيحي</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>#${r.id}</b><br><small>${esc(r.requester)}</small></td><td>${fmt(r.created_at)}</td><td><span class="badge ${priorityClass(r.priority)}">${esc(r.priority)}</span><br><small>${esc(r.issue_type)}</small></td><td>${esc(r.main_location)}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td>${esc(r.corrective_action||'—')}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td><button class="btn btn-small btn-soft" onclick="openReport(${r.id})">فتح</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">لا توجد نتائج.</div>'}
@@ -474,7 +462,7 @@ function openReport(id){
    <label>تاريخ البلاغ<input id="mDate" type="date" value="${dp.date}"></label>
    <label>وقت البلاغ<input id="mTime" type="time" value="${dp.time}"></label>
    <label>الموقع الرئيسي<div class="issue-search location-search"><input id="mMainLocation" list="mLocationList" value="${esc(mainValue).replaceAll('"','&quot;')}" autocomplete="off" placeholder="🔎 ابحث عن الموقع…"><button type="button" class="btn" onclick="document.getElementById('mMainLocation').focus()">⌄</button></div><datalist id="mLocationList">${mainList.map(x=>`<option value="${esc(x).replaceAll('"','&quot;')}"></option>`).join('')}</datalist></label>
-   <label>الموقع الفرعي<select id="mSubLocation">${locationSubOptions(mainValue,r.sub_location)}</select></label>
+   <label>الموقع الفرعي<input id="mSubLocation" list="mSubLocationList" value="${esc(r.sub_location||'').replaceAll('\"','&quot;')}" autocomplete="off" placeholder="✍️ اكتب الموقع الفرعي أو اختر اقتراحًا"><datalist id="mSubLocationList">${[...new Set(locations.filter(x=>x.active&&x.main_location===mainValue&&x.sub_location).map(x=>x.sub_location))].sort((a,b)=>a.localeCompare(b,'ar')).map(v=>`<option value="${esc(v).replaceAll('\"','&quot;')}"></option>`).join('')}</datalist></label>
    <label>القسم المسؤول<select id="mDept" required>${deptOptions}</select><span class="dept-auto-hint ok">القسم المحفوظ مع البلاغ ظاهر هنا، ويمكن تعديله.</span></label>
    <label>الأولوية<select id="mPriority"><option ${r.priority==='عادي'?'selected':''}>عادي</option><option ${r.priority==='عاجل'?'selected':''}>عاجل</option><option ${r.priority==='طوارئ'?'selected':''}>طوارئ</option></select></label>
    <label>نوع البلاغ<select id="mIssueType"><option ${r.issue_type==='تصحيحي'?'selected':''}>تصحيحي</option><option ${r.issue_type==='وقائي'?'selected':''}>وقائي</option><option ${r.issue_type==='طوارئ'?'selected':''}>طوارئ</option></select></label>
@@ -489,8 +477,11 @@ function openReport(id){
  <div id="modalMsg" class="msg"></div><div id="historyBox"></div><div id="qrBox"></div>
  </div>`;
  const modal=document.getElementById('modal');modal.classList.remove('hidden');
- const main=document.getElementById('mMainLocation'),sub=document.getElementById('mSubLocation');
- if(main&&sub)main.addEventListener('input',()=>{sub.innerHTML=locationSubOptions(main.value,'')});
+ const main=document.getElementById('mMainLocation'),sub=document.getElementById('mSubLocation'),subList=document.getElementById('mSubLocationList');
+ if(main&&sub)main.addEventListener('input',()=>{
+  const subs=[...new Set(locations.filter(x=>x.active&&x.main_location===main.value&&x.sub_location).map(x=>x.sub_location))].sort((a,b)=>a.localeCompare(b,'ar'));
+  if(subList)subList.innerHTML=subs.map(v=>`<option value="${esc(v).replaceAll('\"','&quot;')}"></option>`).join('');
+ });
 }
 async function saveReport(id){
  if(!can('edit_report')){toast('ليس لديك صلاحية تعديل البلاغ',false);return}
@@ -498,7 +489,7 @@ async function saveReport(id){
  syncTechnicianPicker();
  const status=document.getElementById('mStatus').value,tech=document.getElementById('mTech').value?Number(document.getElementById('mTech').value):null,dept=document.getElementById('mDept').value?Number(document.getElementById('mDept').value):null,priority=document.getElementById('mPriority').value,issueType=document.getElementById('mIssueType').value,date=document.getElementById('mDate').value,time=document.getElementById('mTime').value,correctiveAction=document.getElementById('mCorrectiveAction').value.trim()||null;
  if(!date||!time){document.getElementById('modalMsg').className='msg show err';document.getElementById('modalMsg').textContent='التاريخ والوقت مطلوبان.';return}
- let patch={requester:document.getElementById('mRequester').value.trim(),ext:document.getElementById('mExt').value.trim()||null,created_at:riyadhDateTimeToISO(date,time),main_location:document.getElementById('mMainLocation').value.trim(),sub_location:document.getElementById('mSubLocation').value.trim()||null,description:document.getElementById('mDesc').value.trim(),status,technician_id:tech,responsible_department_id:dept,department_id:dept,priority,issue_type:issueType,corrective_action:correctiveAction,shift_code:shiftCodeForTime(time),updated_at:nowISO()};
+ let patch={requester:document.getElementById('mRequester').value.trim(),ext:document.getElementById('mExt').value.trim()||null,created_at:riyadhDateTimeToISO(date,time),main_location:document.getElementById('mMainLocation').value.trim(),sub_location:document.getElementById('mSubLocation').value.trim()||null,description:document.getElementById('mDesc').value.trim(),status,technician_id:tech,responsible_department_id:dept,department_id:dept,priority,issue_type:issueType,corrective_action:correctiveAction,updated_at:nowISO()};
  if(tech && !r.assigned_at)patch.assigned_at=nowISO();if(status==='جاري العمل'&&!r.started_at)patch.started_at=nowISO();if(status==='منجز'&&r.status!=='منجز'){patch.completed_at=nowISO();patch.closed_at=nowISO()}else if(status!=='منجز'&&r.status==='منجز'){patch.completed_at=null;patch.closed_at=null}
  const {data,error}=await sb.from('reports').update(patch).eq('id',id).select('*').single();
  if(error){document.getElementById('modalMsg').className='msg show err';document.getElementById('modalMsg').textContent='تعذر التحديث: '+error.message;return}
@@ -600,7 +591,7 @@ async function loadAll(){
   ]);
   let employeeRows=[];
   for(let from=0;from<5000;from+=1000){const {data,error}=await sb.from('employee_directory').select('*').eq('active',true).order('employee_no').range(from,from+999);if(error)break;employeeRows.push(...(data||[]));if((data||[]).length<1000)break}
-  reports=(r.data||[]).map(x=>({...x,shift_code:effectiveShiftCode(x)}));departments=dedupeDepartments(d.data||[]);technicians=t.data||[];shifts=s.data||[];employees=employeeRows;issueDeptMap={};(i.data||[]).forEach(x=>{if(x?.label)issueDeptMap[String(x.label).trim()]=x.department_id||null});issueOptions=(i.data||[]).map(x=>x.label).filter(Boolean);locations=l?.data||[];
+  reports=r.data||[];departments=dedupeDepartments(d.data||[]);technicians=t.data||[];shifts=s.data||[];employees=employeeRows;issueDeptMap={};(i.data||[]).forEach(x=>{if(x?.label)issueDeptMap[String(x.label).trim()]=x.department_id||null});issueOptions=(i.data||[]).map(x=>x.label).filter(Boolean);locations=l?.data||[];
   if(l?.error){toast('تعذر تحميل المواقع: '+l.error.message,false);locations=[];}
   await refreshSocial();
   updateDashboard();
@@ -625,14 +616,15 @@ function renderShell(){
  document.getElementById('app').innerHTML=`<div class="shell"><header class="top"><div class="brand"><button class="menu-btn" onclick="openSidebar()">☰</button><img src="${MINISTRY_LOGO}" class="brand-logo"><div><h1>بوابة إدارة البلاغات <span>CRM</span></h1><p>المستخدم: <b data-current-user-name>${esc(currentProfile.full_name)}</b> · <span>متصل</span></p></div></div><div class="top-actions"><div class="live-pill"><span class="live-dot"></span><span>Realtime</span></div><button class="btn" onclick="loadAll()">↻ تحديث</button><button class="btn btn-danger" onclick="logout()">تسجيل خروج</button></div></header><main class="container"><div class="kpis">${kpi('إجمالي البلاغات','kTotal','','blue')}${kpi('منجزة','kDone','','green')}${kpi('جاري العمل','kWork','','blue')}${kpi('معلقة','kPending','','yellow')}${kpi('ملغاة','kCancel','','red')}${kpi('متأخرة','kOverdue','','purple')}</div>${tabs}${tabIds.map((id,i)=>`<section id="${id}" class="tab-panel ${i?'hidden':''}"></section>`).join('')}</main></div><div id="modal" class="modal hidden"></div><div id="backdrop" class="backdrop" onclick="closeSidebar()"></div><aside id="sidebar" class="sidebar"><div class="sidebar-head"><h3>☰ القائمة</h3><button class="modal-close" style="position:static" onclick="closeSidebar()">×</button></div>${nav('control','الرئيسية','🏠')}${nav('new','بلاغ جديد','➕','create_report')}${nav('tracking','البلاغات النشطة','📋','view_reports')}${nav('employees','دليل الموظفين','👥','view_employees')}${nav('technicians','إدارة الفنيين','🧰')}${nav('locations','إدارة المواقع','📍')}${nav('files','الملفات والتعاميم','📁')}${nav('requests','الإجازات والطلبات','🗓️')}${nav('messages','التواصل الداخلي','💬','use_messages')}<span class="nav-badge" data-badge="messages"></span>${nav('performance','أداء الموظفين','📊','view_performance')}${nav('notes','ملاحظات وتنبيهات','🔔','send_notes')}${nav('qa','الجودة','📊','use_qa')}${nav('reports','التقارير والطباعة','📈','view_reports')}${isAdmin()?`<button class="side-btn" onclick="openPermissionsModal();closeSidebar()">👑 إدارة الصلاحيات</button>`:''}<div class="side-group"><button class="side-btn" onclick="openPasswordModal()">🔐 تغيير كلمة المرور</button>${isAdmin()?'<button class="side-btn" onclick="openRetentionModal()">🗄️ الاحتفاظ بالسجلات</button>':''}<button class="side-btn" onclick="openAppearanceModal()">🎨 إعدادات العرض</button><button class="side-btn" onclick="showTab('guide');closeSidebar()">📘 دليل النظام</button></div><div class="side-group"><button class="side-btn notify-btn" onclick="enableDesktopNotifications()">🔔 تفعيل إشعارات سطح المكتب</button><div class="settings-row"><b>🌐 اللغة</b><div class="seg"><button onclick="applyLanguage('ar')">العربية</button><button onclick="applyLanguage('en')">English</button></div></div><div class="settings-row"><b>🌓 المظهر</b><div class="seg"><button data-theme="light" onclick="applyTheme('light')">☀️</button><button data-theme="dark" onclick="applyTheme('dark')">🌙</button></div></div></div><button class="side-btn" style="margin-top:18px" onclick="logout()">🚪 تسجيل الخروج</button></aside>`;applyTheme(localStorage.getItem('control-theme')||'light');applyLanguage(localStorage.getItem('control-lang')||'ar');applyPermissionsUI();}
 function renderNew(){
  const el=document.getElementById('new');if(!el)return;
- el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>تسجيل بلاغ جديد</h2><p>أدخل الرقم الوظيفي فقط. الاسم والتحويلة تُسحب تلقائيًا من دليل الموظفين.</p></div><div class="next-report-card"><small>رقم البلاغ الجديد</small><strong id="nextReportNumber">جاري الحساب…</strong><span>الرقم المتوقع قبل الحفظ</span></div></div><form id="newForm"><div class="form-grid"><label>رقم الموظف<input id="fEmployee" required oninput="lookupEmployee()"></label><label>طالب الخدمة<input id="fRequester" class="readonly" required></label><label>التحويلة<input id="fExt" class="readonly"></label><div id="employeeLookup" class="span-4"></div><label>تاريخ البلاغ<input id="fDate" type="date"></label><label>وقت البلاغ<input id="fTime" type="time"></label><div><label>الموقع الرئيسي</label><div class="issue-search location-search"><input id="fMainLocation" required autocomplete="off" placeholder="🔎 اكتب للبحث عن الموقع…" oninput="renderLocationPicker(this.value)" onfocus="renderLocationPicker(this.value)"><button type="button" class="btn" onclick="toggleLocationPicker()">▼</button></div><div id="locationPicker" class="issue-picker hidden"></div></div><div><label>الموقع الفرعي<input id="fSubLocation" list="fSubLocationList" autocomplete="off" placeholder="✍️ اكتب الموقع الفرعي أو اختر اقتراحًا"><datalist id="fSubLocationList"><option value=""></option></datalist><span style="font-size:11px;color:var(--muted)">خانة حرة: يمكنك الكتابة والتعديل، والاقتراحات اختيارية.</span></div><label>القسم المسؤول<select id="fDept" required oninput="autoDepartmentFromIssue()" onchange="autoDepartmentFromIssue()">${departments.map(d=>`<option value="${d.id}">${esc(d.name_ar)}${d.name_en?' — '+esc(d.name_en):''}</option>`).join('')}</select><span id="fDeptHint" class="dept-auto-hint">يتم تحديد القسم تلقائيًا عند اختيار وصف مرتبط، ويمكنك تعديله.</span></label><label>الأولوية<select id="fPriority"><option>عادي</option><option>عاجل</option><option>طوارئ</option></select></label><label>نوع البلاغ<select id="fIssueType"><option>تصحيحي</option><option>وقائي</option><option>طوارئ</option></select></label><div class="span-4"><label>وصف المشكلة</label><div class="issue-search"><input id="fDesc" required autocomplete="off" placeholder="اكتب للبحث أو اختر من القائمة…" oninput="autoDepartmentFromIssue()"><button type="button" class="btn" onclick="toggleIssuePicker()">▼</button></div><div id="issuePicker" class="issue-picker hidden"></div><span style="font-size:11px;color:var(--muted)">يمكن اختيار عبارة جاهزة أو كتابة أي مشكلة غير موجودة.</span></div><div class="modal-actions"><button class="btn btn-primary" type="submit">حفظ البلاغ</button><button class="btn" type="button" onclick="document.getElementById('newForm').reset();setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelect('fMainLocation','fSubLocation');lookupEmployee()">إعادة ضبط</button></div><div id="newMsg" class="msg"></div></form></div>`;
- document.getElementById('newForm').onsubmit=createReport;setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelect('fMainLocation','fSubLocation');lookupEmployee();bindIssuePicker();bindLocationPicker();refreshNextReportNumber();
+ el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>تسجيل بلاغ جديد</h2><p>أدخل الرقم الوظيفي فقط. الاسم والتحويلة تُسحب تلقائيًا من دليل الموظفين.</p></div><div class="next-report-card"><small>رقم البلاغ الجديد</small><strong id="nextReportNumber">جاري الحساب…</strong><span>الرقم المتوقع قبل الحفظ</span></div></div><form id="newForm"><div class="form-grid"><label>رقم الموظف<input id="fEmployee" required oninput="lookupEmployee()"></label><label>طالب الخدمة<input id="fRequester" class="readonly" required></label><label>التحويلة<input id="fExt" class="readonly"></label><div id="employeeLookup" class="span-4"></div><label>تاريخ البلاغ<input id="fDate" type="date"></label><label>وقت البلاغ<input id="fTime" type="time"></label><div><label>الموقع الرئيسي</label><div class="issue-search location-search"><input id="fMainLocation" required autocomplete="off" placeholder="🔎 اكتب للبحث عن الموقع…" oninput="renderLocationPicker(this.value)" onfocus="renderLocationPicker(this.value)"><button type="button" class="btn" onclick="toggleLocationPicker()">▼</button></div><div id="locationPicker" class="issue-picker hidden"></div></div><div><label>الموقع الفرعي</label><div class="issue-search location-search"><input id="fSubLocation" autocomplete="off" placeholder="✍️ اكتب الموقع الفرعي أو اختر اقتراحًا" oninput="renderSubLocationPicker(this.value)" onfocus="renderSubLocationPicker(this.value)"><button type="button" class="btn" onclick="toggleSubLocationPicker()">▼</button></div><div id="subLocationPicker" class="issue-picker hidden"></div><span style="font-size:11px;color:var(--muted)">تظهر المواقع الفرعية التابعة للموقع الرئيسي، ويمكنك الكتابة والتعديل يدويًا.</span></div><label>القسم المسؤول<select id="fDept" required oninput="autoDepartmentFromIssue()" onchange="autoDepartmentFromIssue()">${departments.map(d=>`<option value="${d.id}">${esc(d.name_ar)}${d.name_en?' — '+esc(d.name_en):''}</option>`).join('')}</select><span id="fDeptHint" class="dept-auto-hint">يتم تحديد القسم تلقائيًا عند اختيار وصف مرتبط، ويمكنك تعديله.</span></label><label>الأولوية<select id="fPriority"><option>عادي</option><option>عاجل</option><option>طوارئ</option></select></label><label>نوع البلاغ<select id="fIssueType"><option>تصحيحي</option><option>وقائي</option><option>طوارئ</option></select></label><div class="span-4"><label>وصف المشكلة</label><div class="issue-search"><input id="fDesc" required autocomplete="off" placeholder="اكتب للبحث أو اختر من القائمة…" oninput="autoDepartmentFromIssue()"><button type="button" class="btn" onclick="toggleIssuePicker()">▼</button></div><div id="issuePicker" class="issue-picker hidden"></div><span style="font-size:11px;color:var(--muted)">يمكن اختيار عبارة جاهزة أو كتابة أي مشكلة غير موجودة.</span></div><div class="modal-actions"><button class="btn btn-primary" type="submit">حفظ البلاغ</button><button class="btn" type="button" onclick="document.getElementById('newForm').reset();setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelectForMain('');document.getElementById('subLocationPicker')?.classList.add('hidden');lookupEmployee()">إعادة ضبط</button></div><div id="newMsg" class="msg"></div></form></div>`;
+ document.getElementById('newForm').onsubmit=createReport;setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelectForMain('');lookupEmployee();bindIssuePicker();bindLocationPicker();refreshNextReportNumber();
 }
 function bindLocationPicker(){
- const input=document.getElementById('fMainLocation'),box=document.getElementById('locationPicker');if(!input||!box)return;
- input.addEventListener('input',()=>{renderLocationPicker(input.value);populateSubLocationSelectForMain(input.value,document.getElementById('fSubLocation')?.value||'')});
- input.addEventListener('focus',()=>{renderLocationPicker(input.value);populateSubLocationSelectForMain(input.value,document.getElementById('fSubLocation')?.value||'')});
+ const input=document.getElementById('fMainLocation'),box=document.getElementById('locationPicker'),sub=document.getElementById('fSubLocation'),subBox=document.getElementById('subLocationPicker');if(!input||!box)return;
+ input.addEventListener('input',()=>{renderLocationPicker(input.value);populateSubLocationSelectForMain(input.value,sub?.value||'')});
+ input.addEventListener('focus',()=>{renderLocationPicker(input.value);populateSubLocationSelectForMain(input.value,sub?.value||'')});
  box.addEventListener('click',e=>{const b=e.target.closest('.issue-option');if(!b)return;chooseLocation(b.dataset.value||'')});
+ if(sub&&subBox){sub.addEventListener('input',()=>renderSubLocationPicker(sub.value));sub.addEventListener('focus',()=>renderSubLocationPicker(sub.value));subBox.addEventListener('click',e=>{const b=e.target.closest('.issue-option');if(!b)return;chooseSubLocation(b.dataset.value||'')});}
 }
 function renderLocationPicker(q=''){
  const box=document.getElementById('locationPicker');if(!box)return;
@@ -643,8 +635,12 @@ function renderLocationPicker(q=''){
  box.innerHTML=html||'<div class="empty">لا توجد مطابقة — اكتب اسم الموقع يدويًا.</div>';box.classList.remove('hidden');
 }
 function toggleLocationPicker(){renderLocationPicker(document.getElementById('fMainLocation')?.value||'')}
-function chooseLocation(v){const input=document.getElementById('fMainLocation');if(input){input.value=v;input.focus();populateSubLocationSelectForMain(v);};document.getElementById('locationPicker')?.classList.add('hidden')}
-function populateSubLocationSelectForMain(main,selected=''){const el=document.getElementById('fSubLocation');const list=document.getElementById('fSubLocationList');if(!el)return;const subs=[...new Set(locations.filter(x=>x.active&&x.main_location===main&&x.sub_location).map(x=>x.sub_location))].sort((a,b)=>a.localeCompare(b,'ar'));if(selected!==undefined&&selected!==null)el.value=selected;if(list)list.innerHTML=subs.map(v=>`<option value="${esc(v).replaceAll('\"','&quot;')}"></option>`).join('')}
+function chooseLocation(v){const input=document.getElementById('fMainLocation');if(input){input.value=v;input.focus();populateSubLocationSelectForMain(v,'');renderSubLocationPicker('');};document.getElementById('locationPicker')?.classList.add('hidden')}
+function populateSubLocationSelectForMain(main,selected=''){const el=document.getElementById('fSubLocation');if(!el)return;if(selected!==undefined&&selected!==null)el.value=selected;renderSubLocationPicker(el.value||'')}
+function getSubLocationsForMain(main){return [...new Set(locations.filter(x=>x.active&&x.main_location===main&&x.sub_location).map(x=>String(x.sub_location).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));}
+function renderSubLocationPicker(q=''){const box=document.getElementById('subLocationPicker'),main=document.getElementById('fMainLocation')?.value.trim()||'';if(!box)return;const low=String(q||'').trim().toLowerCase();const subs=getSubLocationsForMain(main).filter(x=>!low||x.toLowerCase().includes(low)).slice(0,80);let html=subs.map(x=>`<button type="button" class="issue-option" data-value="${esc(x).replaceAll('\"','&quot;')}">📍 ${esc(x)}</button>`).join('');if(low&&!getSubLocationsForMain(main).some(x=>x.toLowerCase()===low))html+=`<button type="button" class="issue-option custom" data-value="${esc(String(q).trim()).replaceAll('\"','&quot;')}">✍️ استخدام الموقع الفرعي: ${esc(String(q).trim())}</button>`;box.innerHTML=html||'<div class="empty">لا توجد مواقع فرعية لهذا الموقع — يمكنك كتابة الموقع الفرعي يدويًا.</div>';box.classList.remove('hidden')}
+function toggleSubLocationPicker(){renderSubLocationPicker(document.getElementById('fSubLocation')?.value||'')}
+function chooseSubLocation(v){const input=document.getElementById('fSubLocation');if(input){input.value=v;input.focus()}document.getElementById('subLocationPicker')?.classList.add('hidden')}
 function bindIssuePicker(){
  const input=document.getElementById('fDesc'),box=document.getElementById('issuePicker'); if(!input||!box)return;
  input.addEventListener('input',()=>renderIssuePicker(input.value));
@@ -696,10 +692,10 @@ async function refreshNextReportNumber(){const box=document.getElementById('next
 async function createReport(e){
  e.preventDefault();const msg=document.getElementById('newMsg');
  const deptId=Number(document.getElementById('fDept').value);const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10),t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);
- const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,shift_code:shiftCodeForTime(t),started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
+ const created=new Date(`${d}T${t}`).toISOString();const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
  await ensureEmployee(payload.employee_no,payload.requester,payload.ext);
  const {data,error}=await sb.from('reports').insert(payload).select('*').single();if(error){msg.className='msg show err';msg.textContent='تعذر حفظ البلاغ: '+error.message;return}
- try{await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم')}catch(auditErr){console.warn('Audit skipped after report creation:',auditErr?.message||auditErr)}msg.className='msg show ok';msg.textContent=`تم تسجيل البلاغ رقم #${data.id} بنجاح.`;document.getElementById('newForm').reset();setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelect('fMainLocation','fSubLocation');await loadAll();showTab('control')
+ try{await audit(data.id,'إنشاء بلاغ',null,'جاري العمل','تم تسجيل البلاغ من غرفة التحكم')}catch(auditErr){console.warn('Audit skipped after report creation:',auditErr?.message||auditErr)}msg.className='msg show ok';msg.textContent=`تم تسجيل البلاغ رقم #${data.id} بنجاح.`;document.getElementById('newForm').reset();setNewDefaults();populateMainLocationSelect('fMainLocation');populateSubLocationSelectForMain('');document.getElementById('subLocationPicker')?.classList.add('hidden');await loadAll();showTab('control')
 }
 async function sendInternalMessage(){
  const to=document.getElementById('msgTo').value||null;const text=document.getElementById('msgText').value.trim();if(!text)return;
@@ -910,7 +906,7 @@ async function start(){
       const d=document.getElementById('fDate').value||new Date().toISOString().slice(0,10);
       const t=document.getElementById('fTime').value||new Date().toTimeString().slice(0,5);
       const created=new Date(`${d}T${t}`).toISOString();
-      const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,shift_code:shiftCodeForTime(t),started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
+      const payload={employee_no:document.getElementById('fEmployee').value.trim(),requester:document.getElementById('fRequester').value.trim(),ext:document.getElementById('fExt').value.trim()||null,created_at:created,main_location:document.getElementById('fMainLocation').value.trim(),sub_location:document.getElementById('fSubLocation').value.trim()||null,description:document.getElementById('fDesc').value.trim(),department_id:deptId,responsible_department_id:deptId,status:'جاري العمل',priority:document.getElementById('fPriority').value,issue_type:document.getElementById('fIssueType').value,started_at:nowISO(),created_by:currentUser.id,owner_id:currentUser.id};
       await ensureEmployee(payload.employee_no,payload.requester,payload.ext);
       await refreshNextReportNumber();
       const {data,error}=await sb.from('reports').insert(payload).select('*').single();
@@ -924,6 +920,7 @@ async function start(){
       const loc=document.getElementById('fMainLocation');if(loc){loc.value='';loc.readOnly=false}
       populateSubLocationSelectForMain('');
       document.getElementById('locationPicker')?.classList.add('hidden');
+      document.getElementById('subLocationPicker')?.classList.add('hidden');
       lookupEmployee();
       // Refresh data in the background; the success state is already confirmed locally.
       await window.loadAll();
@@ -944,7 +941,7 @@ async function start(){
       if(rtChannel)sb.removeChannel(rtChannel);
       rtChannel=sb.channel('control-dept-live-v2')
         .on('postgres_changes',{event:'*',schema:'public',table:'reports'},async()=>{await window.loadAll()})
-        .on('postgres_changes',{event:'*',schema:'public',table:'locations'},async()=>{const {data,error}=await sb.from('locations').select('id,main_location,sub_location,active').eq('active',true).order('main_location').order('sub_location');if(!error){locations=data||[];renderLocationTable();if(document.getElementById('fMainLocation')){populateMainLocationSelect('fMainLocation');populateSubLocationSelect('fMainLocation','fSubLocation')}}})
+        .on('postgres_changes',{event:'*',schema:'public',table:'locations'},async()=>{const {data,error}=await sb.from('locations').select('id,main_location,sub_location,active').eq('active',true).order('main_location').order('sub_location');if(!error){locations=data||[];renderLocationTable();if(document.getElementById('fMainLocation')){populateMainLocationSelect('fMainLocation');populateSubLocationSelectForMain(document.getElementById('fMainLocation').value||'')}}})
         .on('postgres_changes',{event:'*',schema:'public',table:'document_center'},async()=>{await loadDocuments();if(document.getElementById('files')&&!document.getElementById('files').classList.contains('hidden'))renderFiles()})
         .on('postgres_changes',{event:'*',schema:'public',table:'technicians'},async()=>{const {data,error}=await sb.from('technicians').select('*').order('name');if(!error){technicians=data||[];renderTechnicianTable();if(document.getElementById('technicians'))renderTechnicians()}})
         .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},async()=>{
@@ -1683,82 +1680,88 @@ start();
   if(oldRenderApp)window.renderApp=function(){oldRenderApp();setTimeout(ensureAdminButton,0)};
   setTimeout(()=>{ensureAdminButton();translateAll()},100);
 })();
+
 </script>
 
+
+
+<!-- ===== ONLY FIX: SHIFT CALCULATION + USER PERFORMANCE OPENED REPORTS ===== -->
 <script>
-/* ===== MINIMAL FIX: SHIFT BY TIME + ROBUST USER PERFORMANCE ===== */
 (function(){
-  // Re-apply the effective shift locally after every data load.
-  const baseLoadAll=window.loadAll;
-  if(baseLoadAll && !window.__shiftPerfFixLoadWrapped){
-    window.__shiftPerfFixLoadWrapped=true;
-    window.loadAll=async function(){
-      await baseLoadAll();
-      try{
-        reports=(reports||[]).map(r=>({...r,shift_code:effectiveShiftCode(r)}));
-      }catch(e){console.warn('shift normalization:',e)}
+  // A: 07:00-14:59, B: 15:00-22:59, C: 23:00-06:59 (Riyadh time).
+  function shiftCodeFromRiyadh(dateValue,timeValue){
+    const m=String(timeValue||'').match(/^(\d{1,2}):(\d{2})/);
+    if(!m)return null;
+    const minutes=Number(m[1])*60+Number(m[2]);
+    return minutes>=420&&minutes<900?'A':minutes>=900&&minutes<1380?'B':'C';
+  }
+  window.shiftCodeFromRiyadh=shiftCodeFromRiyadh;
+
+  // Preserve the existing report workflow and add only the correct shift_code.
+  const originalCreateReport=window.createReport;
+  if(typeof originalCreateReport==='function'){
+    window.createReport=async function(e){
+      const shift=shiftCodeFromRiyadh(document.getElementById('fDate')?.value,document.getElementById('fTime')?.value);
+      if(!shift)return originalCreateReport(e);
+      const originalFrom=sb.from.bind(sb);
+      sb.from=function(table){
+        const q=originalFrom(table);
+        if(table!=='reports')return q;
+        const originalInsert=q.insert.bind(q);
+        q.insert=function(payload){
+          if(payload&&typeof payload==='object'&&!Array.isArray(payload))payload={...payload,shift_code:shift};
+          return originalInsert(payload);
+        };
+        return q;
+      };
+      try{return await originalCreateReport(e)}finally{sb.from=originalFrom}
     };
   }
 
-  // Make the user-performance count resilient to either created_by/owner_id,
-  // and use the creation audit as a fallback without double-counting.
+  // Fix only the user-performance attribution: use the actual account id,
+  // with safe fallbacks for older reports/audit rows.
+  const safeEsc2=v=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const dateLocal2=v=>{try{return typeof riyadhInputParts==='function'?(riyadhInputParts(v)?.date||String(v||'').slice(0,10)):String(v||'').slice(0,10)}catch(e){return String(v||'').slice(0,10)}};
+  const inRange2=(v,from,to)=>{const d=dateLocal2(v);return(!from||d>=from)&&(!to||d<=to)};
+  const auditActorId=e=>e?.changed_by??e?.changed_by_id??e?.user_id??e?.actor_id??e?.performed_by??null;
+
   window.renderPerformance=async function(){
-    const el=document.getElementById('performance'); if(!el)return;
+    const el=document.getElementById('performance');if(!el)return;
     if(!isAdmin()){el.innerHTML='<div class="panel"><div class="empty">غير مصرح.</div></div>';return;}
     const def=(()=>{try{return riyadhInputParts(nowISO()).date}catch(e){return new Date().toISOString().slice(0,10)}})();
-    el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>📊 أداء المستخدمين</h2><p>مستخدمو النظام فقط، مع استبعاد المدراء. يتم احتساب البلاغ على المستخدم الذي سجله فعليًا.</p></div></div>
+    el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>📊 أداء المستخدمين</h2><p>مستخدمو Supabase فقط، مع استبعاد المدراء. فتح البلاغات من صاحب الإنشاء الفعلي، والإغلاق من سجل التدقيق الفعلي.</p></div></div>
       <div class="filters"><label>من تاريخ<input id="userPerfFrom" type="date" value="${def}"></label><label>إلى تاريخ<input id="userPerfTo" type="date" value="${def}"></label><button class="btn btn-primary" id="userPerfApply">تطبيق</button><button class="btn btn-soft" id="userPerfToday">اليوم</button></div>
       <div id="userPerfBody"><div class="empty">جاري تحميل الأداء…</div></div></div>`;
-
     const render=async()=>{
-      const from=document.getElementById('userPerfFrom')?.value||'',to=document.getElementById('userPerfTo')?.value||'';
-      const body=document.getElementById('userPerfBody'); if(!body)return;
+      const from=document.getElementById('userPerfFrom')?.value||'',to=document.getElementById('userPerfTo')?.value||'',body=document.getElementById('userPerfBody');if(!body)return;
       body.innerHTML='<div class="empty">جاري حساب الأداء…</div>';
       const [{data:users,error:ue},{data:audits,error:ae}]=await Promise.all([
         sb.from('profiles').select('id,employee_no,full_name,role,display_title,active').order('full_name'),
-        sb.from('report_audit_logs').select('*').order('created_at',{ascending:false}).limit(10000)
+        sb.from('report_audit_logs').select('*').order('changed_at',{ascending:false}).limit(10000)
       ]);
-      if(ue||ae){
-        body.innerHTML=`<div class="msg show err">تعذر تحميل أداء المستخدمين: ${safeEsc((ue||ae)?.message||'خطأ غير معروف')}</div>`;
-        return;
-      }
-      const allUsers=(users||[]).filter(u=>u.active!==false && String(u.role||'').toLowerCase()!=='admin');
+      if(ue||ae){body.innerHTML=`<div class="msg show err">تعذر تحميل أداء المستخدمين: ${safeEsc2((ue||ae)?.message||'خطأ غير معروف')}</div>`;return;}
+      const allUsers=(users||[]).filter(u=>String(u.role||'').toLowerCase()!=='admin');
       const logs=audits||[];
-      const byId=new Map((reports||[]).map(r=>[String(r.id),r]));
       const rows=allUsers.map(u=>{
-        const openedIds=new Set();
-
-        // Primary source: the user who actually created/owns the report.
-        (reports||[]).forEach(r=>{
-          if((String(r.created_by||'')===String(u.id) || String(r.owner_id||'')===String(u.id))
-             && inRange(r.created_at,from,to)){
-            openedIds.add(String(r.id));
-          }
+        const uid=String(u.id||'');
+        const opened=(reports||[]).filter(r=>{
+          if(!inRange2(r.created_at,from,to))return false;
+          if(String(r.created_by||'')===uid||String(r.owner_id||'')===uid)return true;
+          return logs.some(e=>e.report_id===r.id&&String(e.action||'').includes('إنشاء')&&inRange2(e.changed_at||e.created_at,from,to)&&(
+            String(auditActorId(e)||'')===uid||String(e.changed_by_name||'').trim()===String(u.full_name||'').trim()
+          ));
         });
-
-        // Fallback: creation audit authored by this user, useful for records
-        // where created_by/owner_id was not populated.
-        logs.forEach(e=>{
-          if(String(e.action||'').includes('إنشاء') && actorMatches(e,u)){
-            const r=byId.get(String(e.report_id));
-            if(r && inRange(r.created_at,from,to)) openedIds.add(String(r.id));
-          }
-        });
-
-        const closures=logs.filter(e=>e.to_status==='منجز'&&actorMatches(e,u)&&inRange(e.changed_at||e.created_at,from,to));
-        return {u,opened:openedIds.size,closed:closures.length};
-      }).sort((a,b)=>b.opened-a.opened||b.closed-a.closed||String(a.u.full_name||'').localeCompare(String(b.u.full_name||''),'ar'));
-
-      const totalOpen=rows.reduce((a,x)=>a+x.opened,0),totalClosed=rows.reduce((a,x)=>a+x.closed,0);
-      body.innerHTML=`<div class="metrics-grid" style="margin-bottom:14px"><div class="metric"><small>مستخدمو النظام</small><strong>${rows.length}</strong></div><div class="metric"><small>فتح بلاغات</small><strong>${totalOpen}</strong></div><div class="metric"><small>إغلاق بلاغات</small><strong>${totalClosed}</strong></div><div class="metric"><small>الفترة</small><strong style="font-size:16px">${safeEsc(from||'—')} — ${safeEsc(to||'—')}</strong></div></div>
-        <div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>الرقم الوظيفي</th><th>فتح بلاغات</th><th>إغلاق بلاغات</th></tr></thead><tbody>${rows.length?rows.map(x=>`<tr><td><b>${safeEsc(x.u.full_name||'—')}</b><br><small>${safeEsc(x.u.display_title||'')}</small></td><td>${safeEsc(x.u.employee_no||'—')}</td><td><b>${x.opened}</b></td><td><b>${x.closed}</b></td></tr>`).join(''):'<tr><td colspan="4" class="empty">لا توجد بيانات مستخدمين ضمن الفترة المحددة.</td></tr>'}</tbody></table></div>`;
+        const closed=logs.filter(e=>e.to_status==='منجز'&&inRange2(e.changed_at||e.created_at,from,to)&&(
+          String(auditActorId(e)||'')===uid||String(e.changed_by_name||'').trim()===String(u.full_name||'').trim()
+        )).length;
+        return {u,opened,closed};
+      }).sort((a,b)=>b.opened.length-a.opened.length||b.closed-a.closed||String(a.u.full_name||'').localeCompare(String(b.u.full_name||''),'ar'));
+      const totalOpen=rows.reduce((a,x)=>a+x.opened.length,0),totalClosed=rows.reduce((a,x)=>a+x.closed,0);
+      body.innerHTML=`<div class="metrics-grid" style="margin-bottom:14px"><div class="metric"><small>مستخدمو Supabase</small><strong>${rows.length}</strong></div><div class="metric"><small>فتح بلاغات</small><strong>${totalOpen}</strong></div><div class="metric"><small>إغلاق بلاغات</small><strong>${totalClosed}</strong></div><div class="metric"><small>الفترة</small><strong style="font-size:16px">${safeEsc2(from||'—')} — ${safeEsc2(to||'—')}</strong></div></div>
+        <div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>الرقم الوظيفي</th><th>فتح بلاغات</th><th>إغلاق بلاغات</th></tr></thead><tbody>${rows.length?rows.map(x=>`<tr><td><b>${safeEsc2(x.u.full_name||'—')}</b><br><small>${safeEsc2(x.u.display_title||'')}</small></td><td>${safeEsc2(x.u.employee_no||'—')}</td><td><b>${x.opened.length}</b></td><td><b>${x.closed}</b></td></tr>`).join(''):'<tr><td colspan="4" class="empty">لا توجد بيانات مستخدمين ضمن الفترة المحددة.</td></tr>'}</tbody></table></div>`;
     };
     document.getElementById('userPerfApply')?.addEventListener('click',render);
-    document.getElementById('userPerfToday')?.addEventListener('click',()=>{
-      document.getElementById('userPerfFrom').value=def;
-      document.getElementById('userPerfTo').value=def;
-      render();
-    });
+    document.getElementById('userPerfToday')?.addEventListener('click',()=>{document.getElementById('userPerfFrom').value=def;document.getElementById('userPerfTo').value=def;render()});
     await render();
   };
 })();
