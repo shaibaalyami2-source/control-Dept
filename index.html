@@ -459,7 +459,7 @@ function openReport(id){
  <div class="report-edit-head"><div><div class="eyebrow">CONTROL DEPT · تحديث البلاغ</div><h2>البلاغ #${r.id}</h2><p>${fmt(r.created_at)}</p></div><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></div>
  <div class="edit-layout">
   <section class="edit-section"><h3>📋 بيانات البلاغ</h3><div class="form-grid edit-form-grid">
-   <label>الرقم الوظيفي<input id="mEmployee" value="${esc(r.employee_no||'')}" readonly class="readonly"></label>
+   <label>الرقم الوظيفي<input id="mEmployee" value="${esc(r.employee_no||'')}" autocomplete="off" inputmode="numeric" placeholder="الرقم الوظيفي"></label>
    <label>طالب الخدمة<input id="mRequester" value="${esc(r.requester||'')}"></label>
    <label>التحويلة<input id="mExt" value="${esc(r.ext||'')}"></label>
    <label>تاريخ البلاغ<input id="mDate" type="date" value="${dp.date}"></label>
@@ -489,11 +489,13 @@ async function saveReport(id){
  syncTechnicianPicker();
  const status=document.getElementById('mStatus').value,tech=document.getElementById('mTech').value?Number(document.getElementById('mTech').value):null,dept=document.getElementById('mDept').value?Number(document.getElementById('mDept').value):null,priority=document.getElementById('mPriority').value,issueType=document.getElementById('mIssueType').value,date=document.getElementById('mDate').value,time=document.getElementById('mTime').value,correctiveAction=document.getElementById('mCorrectiveAction').value.trim()||null;
  if(!date||!time){document.getElementById('modalMsg').className='msg show err';document.getElementById('modalMsg').textContent='التاريخ والوقت مطلوبان.';return}
- let patch={requester:document.getElementById('mRequester').value.trim(),ext:document.getElementById('mExt').value.trim()||null,created_at:riyadhDateTimeToISO(date,time),main_location:document.getElementById('mMainLocation').value.trim(),sub_location:document.getElementById('mSubLocation').value.trim()||null,description:document.getElementById('mDesc').value.trim(),status,technician_id:tech,responsible_department_id:dept,department_id:dept,priority,issue_type:issueType,corrective_action:correctiveAction,updated_at:nowISO()};
+ const employeeNo=document.getElementById('mEmployee').value.trim();
+ if(!employeeNo){document.getElementById('modalMsg').className='msg show err';document.getElementById('modalMsg').textContent='الرقم الوظيفي مطلوب.';return}
+ let patch={employee_no:employeeNo,requester:document.getElementById('mRequester').value.trim(),ext:document.getElementById('mExt').value.trim()||null,created_at:riyadhDateTimeToISO(date,time),main_location:document.getElementById('mMainLocation').value.trim(),sub_location:document.getElementById('mSubLocation').value.trim()||null,description:document.getElementById('mDesc').value.trim(),status,technician_id:tech,responsible_department_id:dept,department_id:dept,priority,issue_type:issueType,corrective_action:correctiveAction,updated_at:nowISO()};
  if(tech && !r.assigned_at)patch.assigned_at=nowISO();if(status==='جاري العمل'&&!r.started_at)patch.started_at=nowISO();if(status==='منجز'&&r.status!=='منجز'){patch.completed_at=nowISO();patch.closed_at=nowISO()}else if(status!=='منجز'&&r.status==='منجز'){patch.completed_at=null;patch.closed_at=null}
  const {data,error}=await sb.from('reports').update(patch).eq('id',id).select('*').single();
  if(error){document.getElementById('modalMsg').className='msg show err';document.getElementById('modalMsg').textContent='تعذر التحديث: '+error.message;return}
- try{await audit(id,'تعديل بيانات البلاغ',r.status,data.status,'تم تعديل بيانات البلاغ والفني والقسم والإجراء التصحيحي وحالة التشغيل')}catch(auditErr){console.warn('audit after report update:',auditErr?.message||auditErr)}
+ try{await audit(id,'تعديل بيانات البلاغ',r.status,data.status,'تم تعديل بيانات البلاغ والفني والقسم والرقم الوظيفي والإجراء التصحيحي وحالة التشغيل')}catch(auditErr){console.warn('audit after report update:',auditErr?.message||auditErr)}
  toast('تم حفظ تعديلات البلاغ');await loadAll();openReport(id)
 }
 
@@ -506,7 +508,7 @@ function renderReports(){const el=document.getElementById('reports');if(!el)retu
 function renderReportsTable(){const box=document.getElementById('reportTable');if(!box)return;const rows=filteredReports();box.innerHTML=`<div class="metrics-grid" style="margin-bottom:12px">${summaryMetric('النتائج',rows.length)}${summaryMetric('منجز',rows.filter(r=>r.status==='منجز').length)}${summaryMetric('متأخر',rows.filter(overdue).length)}${summaryMetric('مع فني',rows.filter(r=>r.technician_id).length)}</div><div class="table-wrap"><table><thead><tr><th>رقم</th><th>الإنشاء</th><th>الإغلاق الفعلي</th><th>طالب الخدمة</th><th>الموقع</th><th>الأولوية</th><th>الحالة</th><th>الفني</th><th>الإجراء التصحيحي</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>#${r.id}</td><td>${fmt(r.created_at)}</td><td>${fmt(r.closed_at)}</td><td>${esc(r.requester)}</td><td>${esc(r.main_location)}</td><td>${esc(r.priority)}</td><td>${esc(r.status)}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td>${esc(r.corrective_action||'—')}</td></tr>`).join(''):'<tr><td colspan="9" class="empty">لا توجد نتائج مطابقة</td></tr>'}</tbody></table></div>`}
 function printReports(){const rows=filteredReports();preparePrint(rows);window.print()}
 function exportCSV(){const rows=filteredReports();const head=['رقم البلاغ','وقت الإنشاء','وقت الإغلاق الفعلي','طالب الخدمة','رقم الموظف','الموقع الرئيسي','الموقع الفرعي','الأولوية','نوع البلاغ','الحالة','الفني','القسم','حالة QA','الوصف'];const lines=[head,...rows.map(r=>[r.id,r.created_at,r.closed_at,r.requester,r.employee_no,r.main_location,r.sub_location,r.priority,r.issue_type,r.status,technicians.find(t=>t.id===r.technician_id)?.name||'',departments.find(d=>d.id===r.responsible_department_id)?.name_ar||departments.find(d=>d.id===r.department_id)?.name_ar||'',r.qa_status,r.description])].map(row=>row.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(','));const blob=new Blob(['\\ufeff'+lines.join('\\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='control-dept-reports.csv';a.click();URL.revokeObjectURL(a.href)}
-function renderShifts(){const el=document.getElementById('shifts');if(!el)return;const today=new Date().toISOString().slice(0,10);el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>إدارة الورديات والأداء</h2><p>مؤشرات الوردية مبنية على البلاغات المسجلة اليوم.</p></div></div><div class="shift-grid">${(shifts.length?shifts:[{code:'A',name_ar:'الوردية A',start_time:'07:00',end_time:'15:00'},{code:'B',name_ar:'الوردية B',start_time:'15:00',end_time:'23:00'},{code:'C',name_ar:'الوردية C',start_time:'23:00',end_time:'07:00'}]).map(s=>{const rs=reports.filter(r=>r.shift_code===s.code&&r.created_at.slice(0,10)===today);const done=rs.filter(r=>r.status==='منجز').length;const active=rs.filter(isActive).length;const overdueN=rs.filter(overdue).length;return `<div class="shift-card"><h3>${esc(s.name_ar)} <span class="badge badge-blue">${s.code}</span></h3><div class="shift-time">${s.start_time||'—'} – ${s.end_time||'—'}</div><div class="shift-stats"><div class="shift-stat"><small>بلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>نشطة</small><b>${active}</b></div><div class="shift-stat"><small>متأخرة</small><b class="${overdueN?'overdue':''}">${overdueN}</b></div></div></div>`}).join('')}</div></div>`}
+function renderShifts(){const el=document.getElementById('shifts');if(!el)return;const today=new Date().toISOString().slice(0,10);el.innerHTML=`<div class="panel"><div class="panel-head"><div><h2>إدارة الورديات والأداء</h2><p>مؤشرات الوردية مبنية على البلاغات المسجلة اليوم.</p></div></div><div class="shift-grid">${(shifts.length?shifts:[{code:'A',name_ar:'الوردية A',start_time:'07:00',end_time:'15:00'},{code:'B',name_ar:'الوردية B',start_time:'15:00',end_time:'23:00'},{code:'C',name_ar:'الوردية C',start_time:'23:00',end_time:'07:00'}]).map(s=>{const rs=reports.filter(r=>shiftCodeFromReport(r)===s.code&&riyadhDateOf(r.created_at)===today);const done=rs.filter(r=>r.status==='منجز').length;const active=rs.filter(isActive).length;const overdueN=rs.filter(overdue).length;return `<div class="shift-card"><h3>${esc(s.name_ar)} <span class="badge badge-blue">${s.code}</span></h3><div class="shift-time">${s.start_time||'—'} – ${s.end_time||'—'}</div><div class="shift-stats"><div class="shift-stat"><small>بلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>نشطة</small><b>${active}</b></div><div class="shift-stat"><small>متأخرة</small><b class="${overdueN?'overdue':''}">${overdueN}</b></div></div></div>`}).join('')}</div></div>`}
 function renderQA(){
  const el=document.getElementById('qa');if(!el)return;
  const today=riyadhInputParts(new Date().toISOString()).date;
@@ -517,7 +519,7 @@ function renderQAShift(){
  const box=document.getElementById('qaShiftBody');if(!box)return;const date=document.getElementById('qaDate')?.value||riyadhInputParts(new Date().toISOString()).date;
  const fallback=[{code:'A',name_ar:'الوردية A',start_time:'07:00',end_time:'15:00'},{code:'B',name_ar:'الوردية B',start_time:'15:00',end_time:'23:00'},{code:'C',name_ar:'الوردية C',start_time:'23:00',end_time:'07:00'}];
  const list=shifts.length?shifts:fallback;
- box.innerHTML=`<div class="shift-grid">${list.map(sh=>{const rs=reports.filter(r=>r.shift_code===sh.code&&riyadhInputParts(r.created_at).date===date);const done=rs.filter(r=>r.status==='منجز').length;const pending=rs.length-done;const pct=rs.length?Math.round(done/rs.length*100):0;const techDone=rs.filter(r=>r.status==='منجز'&&r.technician_id).length;return `<div class="shift-card"><h3>${esc(sh.name_ar||('الوردية '+sh.code))} <span class="badge badge-blue">${esc(sh.code)}</span></h3><div class="shift-time">${sh.start_time||'—'} – ${sh.end_time||'—'}</div><div class="shift-stats"><div class="shift-stat"><small>إجمالي البلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>متبقية</small><b>${pending}</b></div><div class="shift-stat"><small>نسبة الإنجاز</small><b>${pct}%</b></div></div><div style="margin-top:10px"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><small style="color:var(--muted)">منجزة بفني مسند: ${techDone}</small></div></div>`}).join('')}</div><div class="panel" style="margin-top:16px"><div class="panel-head"><div><h3>تفاصيل البلاغات حسب الوردية</h3><p>اضغط «فتح» لتحديث الفني والإجراء التصحيحي والحالة.</p></div></div><div class="table-wrap"><table><thead><tr><th>الوردية</th><th>البلاغ</th><th>الفني</th><th>الحالة</th><th>الإجراء التصحيحي</th><th>فتح</th></tr></thead><tbody>${list.flatMap(sh=>reports.filter(r=>r.shift_code===sh.code&&riyadhInputParts(r.created_at).date===date).map(r=>`<tr><td>${esc(sh.code)}</td><td>#${r.id}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td>${esc(r.corrective_action||'—')}</td><td><button class="btn btn-small btn-soft" onclick="openReport(${r.id})">فتح</button></td></tr>`)).join('')||'<tr><td colspan="6" class="empty">لا توجد بلاغات لهذا التاريخ.</td></tr>'}</tbody></table></div></div>`;
+ box.innerHTML=`<div class="shift-grid">${list.map(sh=>{const rs=reports.filter(r=>shiftCodeFromReport(r)===sh.code&&riyadhDateOf(r.created_at)===date);const done=rs.filter(r=>r.status==='منجز').length;const pending=rs.length-done;const pct=rs.length?Math.round(done/rs.length*100):0;const techDone=rs.filter(r=>r.status==='منجز'&&r.technician_id).length;return `<div class="shift-card"><h3>${esc(sh.name_ar||('الوردية '+sh.code))} <span class="badge badge-blue">${esc(sh.code)}</span></h3><div class="shift-time">${sh.start_time||'—'} – ${sh.end_time||'—'}</div><div class="shift-stats"><div class="shift-stat"><small>إجمالي البلاغات</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>متبقية</small><b>${pending}</b></div><div class="shift-stat"><small>نسبة الإنجاز</small><b>${pct}%</b></div></div><div style="margin-top:10px"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><small style="color:var(--muted)">منجزة بفني مسند: ${techDone}</small></div></div>`}).join('')}</div><div class="panel" style="margin-top:16px"><div class="panel-head"><div><h3>تفاصيل البلاغات حسب الوردية</h3><p>اضغط «فتح» لتحديث الفني والإجراء التصحيحي والحالة.</p></div></div><div class="table-wrap"><table><thead><tr><th>الوردية</th><th>البلاغ</th><th>الفني</th><th>الحالة</th><th>الإجراء التصحيحي</th><th>فتح</th></tr></thead><tbody>${list.flatMap(sh=>reports.filter(r=>shiftCodeFromReport(r)===sh.code&&riyadhDateOf(r.created_at)===date).map(r=>`<tr><td>${esc(sh.code)}</td><td>#${r.id}</td><td>${esc(technicians.find(t=>t.id===r.technician_id)?.name||'—')}</td><td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td><td>${esc(r.corrective_action||'—')}</td><td><button class="btn btn-small btn-soft" onclick="openReport(${r.id})">فتح</button></td></tr>`)).join('')||'<tr><td colspan="6" class="empty">لا توجد بلاغات لهذا التاريخ.</td></tr>'}</tbody></table></div></div>`;
 }
 
 function countBy(arr){const m={};arr.forEach(v=>m[v]=(m[v]||0)+1);return Object.entries(m).sort((a,b)=>b[1]-a[1])}
@@ -1376,7 +1378,7 @@ start();
     const depts=departments.map(d=>({d,rows:reports.filter(r=>Number(r.responsible_department_id??r.department_id)===Number(d.id))})).filter(x=>x.rows.length).sort((a,b)=>b.rows.length-a.rows.length);
     const freq={};reports.forEach(r=>{const k=String(r.description||'غير محدد').trim()||'غير محدد';freq[k]=(freq[k]||0)+1});const issues=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,8);
     const statuses=[['جاري العمل',reports.filter(r=>r.status==='جاري العمل').length],['معلق',pending.length],['منجز',done.length],['ملغى',cancel.length]];
-    el.innerHTML=`<div class="panel" style="margin-bottom:16px"><div class="panel-head"><div><h2>🏠 لوحة التحكم الرئيسية</h2><p>لوحة تشغيلية تفاعلية — اضغط على أي بطاقة أو قسم أو وصف لعرض البلاغات المرتبطة.</p></div><button class="btn btn-primary" onclick="showTab('new')">＋ تسجيل بلاغ</button></div></div><div class="dashboard-grid"><div class="dashboard-card clickable-card" onclick="openFiltered('إجمالي البلاغات',reports)"><p>إجمالي البلاغات</p><div class="dash-value">${total}</div><div class="dash-meta">اضغط لعرض الكل</div></div><div class="dashboard-card clickable-card" onclick="openFiltered('البلاغات المفتوحة',active)"><p>البلاغات المفتوحة</p><div class="dash-value">${active.length}</div><div class="dash-meta">تحتاج متابعة</div></div><div class="dashboard-card clickable-card" onclick="openFiltered('البلاغات المغلقة',done)"><p>البلاغات المغلقة</p><div class="dash-value">${done.length}</div><div class="dash-meta">بوقت إغلاق موثق</div></div><div class="dashboard-card clickable-card" onclick="showTab('completed')"><p>البلاغات المنجزة</p><div class="dash-value">${done.length}</div><div class="dash-meta">فتح تبويب المنجز</div></div></div><div class="dashboard-grid"><div class="dashboard-card chart-card"><div class="chart-title"><h3>حالة البلاغات</h3><span>تفاعلي</span></div>${statuses.map(([s,n])=>`<div class="bar-row clickable-row" onclick="openFiltered('${s}',reports.filter(r=>r.status==='${s}'))"><div style="flex:1"><b>${escx(s)}</b><div class="bar-track"><div class="bar-fill" style="width:${total?Math.max(3,n/total*100):0}%"></div></div></div><b class="bar-num">${n}</b></div>`).join('')}</div><div class="dashboard-card chart-card"><div class="chart-title"><h3>الأقسام الهندسية</h3><span>توزيع البلاغات</span></div>${depts.map(x=>`<div class="bar-row clickable-row" onclick="openFiltered('${escx(x.d.name_ar)}',reports.filter(r=>Number(r.responsible_department_id??r.department_id)===${Number(x.d.id)}))"><div style="flex:1"><b>${escx(x.d.name_ar)}</b><div class="bar-track"><div class="bar-fill" style="width:${Math.max(3,x.rows.length/(depts[0]?.rows.length||1)*100)}%"></div></div></div><b class="bar-num">${x.rows.length}</b></div>`).join('')||'<div class="empty">لا توجد بيانات أقسام.</div>'}</div><div class="dashboard-card chart-card"><div class="chart-title"><h3>أكثر البلاغات حسب الوصف</h3><span>أعلى 8 أوصاف</span></div>${issues.map(([s,n])=>`<div class="bar-row clickable-row" onclick="openFiltered('${escx(s).replace(/'/g,"\\'")}',reports.filter(r=>String(r.description||'').trim()==='${escx(s).replace(/'/g,"\\'")}'))"><div style="flex:1"><b>${escx(s)}</b><div class="bar-track"><div class="bar-fill" style="width:${Math.max(3,n/(issues[0]?.[1]||1)*100)}%"></div></div></div><b class="bar-num">${n}</b></div>`).join('')||'<div class="empty">لا توجد أوصاف.</div>'}</div><div class="dashboard-card chart-card"><div class="chart-title"><h3>الورديات</h3><span>حسب وقت تسجيل البلاغ</span></div>${['A','B','C'].map(c=>{const sh=getShift(c),rs=reports.filter(r=>r.shift_code===c);return `<div class="bar-row clickable-row" onclick="openFiltered('الوردية ${c}',reports.filter(r=>r.shift_code==='${c}'))"><div style="flex:1"><b>${escx(sh?.name_ar||('الوردية '+c))}</b><small style="display:block;color:var(--muted)">${hhmm(sh?.start_time)} – ${hhmm(sh?.end_time)}</small></div><b class="bar-num">${rs.length}</b></div>`}).join('')}</div></div><div class="panel recent-panel"><div class="panel-head"><div><h2>📋 أحدث البلاغات</h2><p>يمكن فتح أي بلاغ مباشرة.</p></div></div><div class="recent-toolbar"><div class="search-box"><input id="controlSearch" placeholder="بحث برقم البلاغ أو الموقع أو الوصف أو الفني…" oninput="renderControlTable()"></div><button class="btn btn-soft" onclick="showTab('tracking')">متابعة وتحديث</button></div><div id="controlTable" style="margin-top:12px"></div></div>`;
+    el.innerHTML=`<div class="panel" style="margin-bottom:16px"><div class="panel-head"><div><h2>🏠 لوحة التحكم الرئيسية</h2><p>لوحة تشغيلية تفاعلية — اضغط على أي بطاقة أو قسم أو وصف لعرض البلاغات المرتبطة.</p></div><button class="btn btn-primary" onclick="showTab('new')">＋ تسجيل بلاغ</button></div></div><div class="dashboard-grid"><div class="dashboard-card clickable-card" onclick="openFiltered('إجمالي البلاغات',reports)"><p>إجمالي البلاغات</p><div class="dash-value">${total}</div><div class="dash-meta">اضغط لعرض الكل</div></div><div class="dashboard-card clickable-card" onclick="openFiltered('البلاغات المفتوحة',active)"><p>البلاغات المفتوحة</p><div class="dash-value">${active.length}</div><div class="dash-meta">تحتاج متابعة</div></div><div class="dashboard-card clickable-card" onclick="openFiltered('البلاغات المغلقة',done)"><p>البلاغات المغلقة</p><div class="dash-value">${done.length}</div><div class="dash-meta">بوقت إغلاق موثق</div></div><div class="dashboard-card clickable-card" onclick="showTab('completed')"><p>البلاغات المنجزة</p><div class="dash-value">${done.length}</div><div class="dash-meta">فتح تبويب المنجز</div></div></div><div class="dashboard-grid"><div class="dashboard-card chart-card"><div class="chart-title"><h3>حالة البلاغات</h3><span>تفاعلي</span></div>${statuses.map(([s,n])=>`<div class="bar-row clickable-row" onclick="openFiltered('${s}',reports.filter(r=>r.status==='${s}'))"><div style="flex:1"><b>${escx(s)}</b><div class="bar-track"><div class="bar-fill" style="width:${total?Math.max(3,n/total*100):0}%"></div></div></div><b class="bar-num">${n}</b></div>`).join('')}</div><div class="dashboard-card chart-card"><div class="chart-title"><h3>الأقسام الهندسية</h3><span>توزيع البلاغات</span></div>${depts.map(x=>`<div class="bar-row clickable-row" onclick="openFiltered('${escx(x.d.name_ar)}',reports.filter(r=>Number(r.responsible_department_id??r.department_id)===${Number(x.d.id)}))"><div style="flex:1"><b>${escx(x.d.name_ar)}</b><div class="bar-track"><div class="bar-fill" style="width:${Math.max(3,x.rows.length/(depts[0]?.rows.length||1)*100)}%"></div></div></div><b class="bar-num">${x.rows.length}</b></div>`).join('')||'<div class="empty">لا توجد بيانات أقسام.</div>'}</div><div class="dashboard-card chart-card"><div class="chart-title"><h3>أكثر البلاغات حسب الوصف</h3><span>أعلى 8 أوصاف</span></div>${issues.map(([s,n])=>`<div class="bar-row clickable-row" onclick="openFiltered('${escx(s).replace(/'/g,"\\'")}',reports.filter(r=>String(r.description||'').trim()==='${escx(s).replace(/'/g,"\\'")}'))"><div style="flex:1"><b>${escx(s)}</b><div class="bar-track"><div class="bar-fill" style="width:${Math.max(3,n/(issues[0]?.[1]||1)*100)}%"></div></div></div><b class="bar-num">${n}</b></div>`).join('')||'<div class="empty">لا توجد أوصاف.</div>'}</div><div class="dashboard-card chart-card"><div class="chart-title"><h3>الورديات</h3><span>حسب وقت تسجيل البلاغ</span></div>${['A','B','C'].map(c=>{const sh=getShift(c),rs=reports.filter(r=>shiftCodeFromReport(r)===c);return `<div class="bar-row clickable-row" onclick="openFiltered('الوردية ${c}',reports.filter(r=>shiftCodeFromReport(r)==='${c}'))"><div style="flex:1"><b>${escx(sh?.name_ar||('الوردية '+c))}</b><small style="display:block;color:var(--muted)">${hhmm(sh?.start_time)} – ${hhmm(sh?.end_time)}</small></div><b class="bar-num">${rs.length}</b></div>`}).join('')}</div></div><div class="panel recent-panel"><div class="panel-head"><div><h2>📋 أحدث البلاغات</h2><p>يمكن فتح أي بلاغ مباشرة.</p></div></div><div class="recent-toolbar"><div class="search-box"><input id="controlSearch" placeholder="بحث برقم البلاغ أو الموقع أو الوصف أو الفني…" oninput="renderControlTable()"></div><button class="btn btn-soft" onclick="showTab('tracking')">متابعة وتحديث</button></div><div id="controlTable" style="margin-top:12px"></div></div>`;
     renderControlTable();
   };
   window.renderControlTable=function(){const box=document.getElementById('controlTable');if(!box)return;const q=(document.getElementById('controlSearch')?.value||'').trim().toLowerCase(),rows=activeRows().filter(r=>textSearch(r,q)).slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));box.innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>رقم</th><th>وقت البلاغ</th><th>القسم</th><th>الموقع</th><th>الفني</th><th>الحالة</th><th>فتح</th></tr></thead><tbody>${rows.map(r=>`<tr><td>#${r.id}</td><td>${escx(fmt(r.created_at))}</td><td>${escx(deptName(r))}</td><td>${escx(r.main_location)}</td><td>${escx(techName(r))}</td><td><span class="badge ${statusClass(r.status)}">${escx(r.status)}</span></td><td><button class="btn btn-small btn-soft" onclick="openReport(${r.id})">تحديث</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">لا توجد بلاغات نشطة مطابقة.</div>'};
@@ -1389,7 +1391,7 @@ start();
 
   window.renderQAShift=function(){
     const box=document.getElementById('qaShiftBody');if(!box)return;const date=document.getElementById('qaDate')?.value||new Date().toISOString().slice(0,10);const list=['A','B','C'].map(c=>getShift(c));
-    box.innerHTML=`<div class="shift-grid">${list.map(sh=>{const rs=reports.filter(r=>r.shift_code===sh.code&&localParts(r.created_at).date===date),done=rs.filter(r=>r.status==='منجز').length,pending=rs.filter(r=>r.status!=='منجز').length,pct=rs.length?done/rs.length*100:0;return `<div class="shift-card clickable-card" onclick="openFiltered('${escx(sh.name_ar)}',reports.filter(r=>r.shift_code==='${sh.code}'&&riyadhInputParts(r.created_at).date==='${date}'))"><h3>${escx(sh.name_ar)} <span class="badge badge-blue">${escx(sh.code)}</span></h3><div class="shift-time">${hhmm(sh.start_time)} – ${hhmm(sh.end_time)}</div><div class="shift-stats"><div class="shift-stat"><small>إجمالي</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>متبقية</small><b>${pending}</b></div><div class="shift-stat"><small>نسبة الإنجاز</small><b>${pct.toFixed(1)}%</b></div></div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></div>`}).join('')}</div><div class="panel" style="margin-top:16px"><div class="panel-head"><div><h3>تفاصيل البلاغات حسب الوردية</h3><p>كل الأوقات المعروضة HH:mm.</p></div></div>${list.map(sh=>{const rs=reports.filter(r=>r.shift_code===sh.code&&localParts(r.created_at).date===date);return `<div class="panel" style="margin-top:10px"><h3>${escx(sh.name_ar)} — ${hhmm(sh.start_time)}–${hhmm(sh.end_time)}</h3><div class="table-wrap"><table><thead><tr><th>البلاغ</th><th>وقت التسجيل</th><th>الفني</th><th>الحالة</th><th>الإغلاق</th></tr></thead><tbody>${rs.map(r=>`<tr><td>#${r.id}</td><td>${hhmm(localParts(r.created_at).time)}</td><td>${escx(techName(r))}</td><td>${escx(r.status)}</td><td>${escx(r.closed_at?hhmm(localParts(r.closed_at).time):'—')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">لا توجد بلاغات.</td></tr>'}</tbody></table></div></div>`}).join('')}</div>`;
+    box.innerHTML=`<div class="shift-grid">${list.map(sh=>{const rs=reports.filter(r=>shiftCodeFromReport(r)===sh.code&&riyadhDateOf(r.created_at)===date),done=rs.filter(r=>r.status==='منجز').length,pending=rs.filter(r=>r.status!=='منجز').length,pct=rs.length?done/rs.length*100:0;return `<div class="shift-card clickable-card" onclick="openFiltered('${escx(sh.name_ar)}',reports.filter(r=>r.shift_code==='${sh.code}'&&riyadhInputParts(r.created_at).date==='${date}'))"><h3>${escx(sh.name_ar)} <span class="badge badge-blue">${escx(sh.code)}</span></h3><div class="shift-time">${hhmm(sh.start_time)} – ${hhmm(sh.end_time)}</div><div class="shift-stats"><div class="shift-stat"><small>إجمالي</small><b>${rs.length}</b></div><div class="shift-stat"><small>منجزة</small><b>${done}</b></div><div class="shift-stat"><small>متبقية</small><b>${pending}</b></div><div class="shift-stat"><small>نسبة الإنجاز</small><b>${pct.toFixed(1)}%</b></div></div><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></div>`}).join('')}</div><div class="panel" style="margin-top:16px"><div class="panel-head"><div><h3>تفاصيل البلاغات حسب الوردية</h3><p>كل الأوقات المعروضة HH:mm.</p></div></div>${list.map(sh=>{const rs=reports.filter(r=>shiftCodeFromReport(r)===sh.code&&riyadhDateOf(r.created_at)===date);return `<div class="panel" style="margin-top:10px"><h3>${escx(sh.name_ar)} — ${hhmm(sh.start_time)}–${hhmm(sh.end_time)}</h3><div class="table-wrap"><table><thead><tr><th>البلاغ</th><th>وقت التسجيل</th><th>الفني</th><th>الحالة</th><th>الإغلاق</th></tr></thead><tbody>${rs.map(r=>`<tr><td>#${r.id}</td><td>${hhmm(localParts(r.created_at).time)}</td><td>${escx(techName(r))}</td><td>${escx(r.status)}</td><td>${escx(r.closed_at?hhmm(localParts(r.closed_at).time):'—')}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">لا توجد بلاغات.</td></tr>'}</tbody></table></div></div>`}).join('')}</div>`;
   };
 
   // Login: react immediately to auth changes, no F5.
@@ -1649,14 +1651,36 @@ start();
 <!-- ===== ONLY FIX: SHIFT CALCULATION + USER PERFORMANCE OPENED REPORTS ===== -->
 <script>
 (function(){
-  // A: 07:00-14:59, B: 15:00-22:59, C: 23:00-06:59 (Riyadh time).
-  function shiftCodeFromRiyadh(dateValue,timeValue){
-    const m=String(timeValue||'').match(/^(\d{1,2}):(\d{2})/);
+  // Shift calculation is driven by the active rows in public.shifts.
+  // Times are compared in Asia/Riyadh, while the database stores time values
+  // as PostgreSQL TIME (normally returned as HH:mm:ss).
+  function timeToMinutes(v){
+    const m=String(v??'').trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
     if(!m)return null;
-    const minutes=Number(m[1])*60+Number(m[2]);
+    return Number(m[1])*60+Number(m[2]);
+  }
+  function shiftCodeFromRiyadh(dateValue,timeValue){
+    const minutes=timeToMinutes(timeValue);
+    if(minutes==null)return null;
+    const dbShifts=Array.isArray(shifts)?shifts.filter(s=>s&&s.active!==false):[];
+    for(const sh of dbShifts){
+      const start=timeToMinutes(sh.start_time), end=timeToMinutes(sh.end_time);
+      if(start==null||end==null)continue;
+      const inShift=start<end ? (minutes>=start&&minutes<end) : (minutes>=start||minutes<end);
+      if(inShift)return sh.code;
+    }
+    // Safe fallback only if the shifts table has not loaded yet.
     return minutes>=420&&minutes<900?'A':minutes>=900&&minutes<1380?'B':'C';
   }
   window.shiftCodeFromRiyadh=shiftCodeFromRiyadh;
+  window.riyadhDateOf=function(v){try{return typeof riyadhInputParts==='function'?(riyadhInputParts(v)?.date||String(v||'').slice(0,10)):String(v||'').slice(0,10)}catch(e){return String(v||'').slice(0,10)}};
+  window.shiftCodeFromReport=function(r){
+    try{
+      const parts=typeof riyadhInputParts==='function'?riyadhInputParts(r?.created_at):null;
+      const code=shiftCodeFromRiyadh(parts?.date,parts?.time);
+      return code||r?.shift_code||null;
+    }catch(e){return r?.shift_code||null}
+  };
 
   // Preserve the existing report workflow and add only the correct shift_code.
   const originalCreateReport=window.createReport;
@@ -1805,6 +1829,75 @@ start();
     @media(max-width:700px){.employee-id-modal-v2{width:100%!important;max-width:none!important;height:100%!important;max-height:100vh!important;border-radius:0!important;padding:16px 10px 12px!important;overflow:auto}.employee-id-card-v2{max-width:520px}.id-v2-brand{padding-top:16px}.id-v2-hero{padding:20px 22px;min-height:126px}.id-v2-name h3{font-size:24px}.id-v2-avatar{width:78px;height:78px;flex-basis:78px}.id-v2-avatar span{width:64px;height:64px;font-size:28px}.id-v2-details{margin:0 14px}.id-v2-details>div{padding:12px 9px}.id-v2-details b{font-size:13px}.id-v2-footer{padding:12px 20px 18px}.employee-id-actions-v2{grid-template-columns:1fr!important;position:sticky!important;bottom:0;background:#f7fbff;padding-top:8px;z-index:5}.employee-action-dark{order:3}}
     @media print{.employee-id-actions-v2,.employee-id-close,.employee-id-head-v2{display:none!important}}
   `;document.head.appendChild(st);
+})();
+
+/* ===== DIGITAL EMPLOYEE CARD PHOTO — ADD ONLY ===== */
+
+(function(){
+  const PHOTO_PREFIX='crm_employee_photo_v1_';
+  const photoKey=()=>PHOTO_PREFIX+String(currentUser?.id||'guest');
+  const getPhoto=()=>{try{return localStorage.getItem(photoKey())||''}catch(e){return ''}};
+  const setPhoto=v=>{try{localStorage.setItem(photoKey(),v)}catch(e){toast('تعذر حفظ الصورة على هذا الجهاز.',false)}};
+
+  function applyEmployeePhoto(){
+    const card=document.getElementById('employeeIdCard');
+    if(!card)return;
+    const avatar=card.querySelector('.id-v2-avatar');
+    if(!avatar)return;
+    const photo=getPhoto();
+    if(photo){
+      avatar.innerHTML=`<img src="${photo}" alt="الصورة التعريفية" class="employee-id-photo">`;
+    }
+    const actions=card.parentElement?.querySelector('.employee-id-actions-v2');
+    if(!actions || actions.querySelector('[data-photo-action]'))return;
+    const input=document.createElement('input');
+    input.type='file'; input.accept='image/*'; input.hidden=true; input.setAttribute('data-photo-input','1');
+    input.onchange=async()=>{
+      const file=input.files?.[0]; if(!file)return;
+      if(!file.type.startsWith('image/')){toast('الرجاء اختيار ملف صورة.',false);return}
+      if(file.size>8*1024*1024){toast('حجم الصورة كبير. اختر صورة أقل من 8 MB.',false);return}
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const img=new Image();
+        img.onload=()=>{
+          const max=600, scale=Math.min(1,max/Math.max(img.width,img.height));
+          const canvas=document.createElement('canvas');
+          canvas.width=Math.max(1,Math.round(img.width*scale));
+          canvas.height=Math.max(1,Math.round(img.height*scale));
+          const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,canvas.width,canvas.height);
+          const data=canvas.toDataURL('image/jpeg',0.86);
+          setPhoto(data);
+          avatar.innerHTML=`<img src="${data}" alt="الصورة التعريفية" class="employee-id-photo">`;
+          toast('تمت إضافة الصورة التعريفية.');
+        };
+        img.onerror=()=>toast('تعذر قراءة الصورة.',false);
+        img.src=String(reader.result||'');
+      };
+      reader.onerror=()=>toast('تعذر قراءة ملف الصورة.',false);
+      reader.readAsDataURL(file);
+    };
+    actions.appendChild(input);
+    const photoBtn=document.createElement('button');
+    photoBtn.type='button'; photoBtn.className='btn employee-action-light'; photoBtn.setAttribute('data-photo-action','1');
+    photoBtn.innerHTML='📷 إضافة/تغيير الصورة';
+    photoBtn.onclick=()=>input.click();
+    actions.insertBefore(photoBtn,actions.firstChild);
+  }
+
+  const oldOpen=window.openMyEmployeeCard;
+  if(typeof oldOpen==='function'){
+    window.openMyEmployeeCard=function(){
+      oldOpen.apply(this,arguments);
+      setTimeout(applyEmployeePhoto,20);
+    };
+  }
+
+  const style=document.createElement('style');
+  style.textContent=`
+    .id-v2-avatar .employee-id-photo{width:76px;height:76px;border-radius:50%;object-fit:cover;display:block}
+    @media(max-width:700px){.id-v2-avatar .employee-id-photo{width:64px;height:64px}}
+  `;
+  document.head.appendChild(style);
 })();
 
 /* ===== FINAL UNIVERSAL REALTIME ISOLATION =====
