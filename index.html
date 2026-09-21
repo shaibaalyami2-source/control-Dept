@@ -81,11 +81,15 @@ table{width:100%;border-collapse:collapse;min-width:1080px;background:#fff}th,td
 
 /* Official A4 report */
 .print-sheet{color:#102a43;background:#fff}
-.print-header{display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;gap:18px;border-bottom:3px solid var(--green);padding-bottom:12px;margin-bottom:14px}
-.print-logo{width:100px;height:92px;object-fit:contain;justify-self:end}.print-title{text-align:center}.print-title h1{margin:0;font-size:20px}.print-title h2{margin:4px 0 0;font-size:16px;color:var(--green)}.print-title p{margin:4px 0 0;font-size:11px;color:#66758a}
-.print-side{font-size:10px;line-height:1.8;color:#5b6879}.print-side strong{color:#102a43}
+.print-header{display:grid;grid-template-columns:1fr 2fr 1fr;align-items:center;gap:18px;border-bottom:3px solid var(--green);padding-bottom:12px;margin-bottom:14px;background:#ffffff !important;color:#102a43 !important}
+.print-logo{width:100px;height:92px;object-fit:contain;justify-self:end}.print-title{text-align:center}.print-title h1{margin:0;font-size:20px;color:#102a43 !important}.print-title h2{margin:4px 0 0;font-size:16px;color:var(--green)}.print-title p{margin:4px 0 0;font-size:11px;color:#475569 !important}
+.print-side{font-size:10px;line-height:1.8;color:#102a43 !important}.print-side strong{color:#102a43 !important}
 .print-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.print-meta .box{border:1px solid #dce4ec;border-radius:8px;padding:7px 9px;background:#f8fafc}.print-meta small{display:block;color:#6b7888}.print-meta b{display:block;margin-top:2px}
-.print-sheet table{width:100%;min-width:0;border-collapse:collapse;font-size:9.2px}.print-sheet th{position:static;background:#102a43;color:#fff;border:1px solid #d7dfe8;padding:6px}.print-sheet td{border:1px solid #d7dfe8;padding:5px}.print-footer{margin-top:12px;border-top:1px solid #dce4ec;padding-top:7px;display:flex;justify-content:space-between;font-size:9px;color:#66758a}
+.print-sheet table{width:100%;min-width:0;border-collapse:collapse;font-size:9.2px}
+.print-sheet th{position:static;background:#f1f5f9 !important;color:#0f172a !important;border:1px solid #d7dfe8;padding:6px;font-weight:bold} /* جعل رأس الجدول فاتحاً والنص داكناً */
+.print-sheet td{border:1px solid #d7dfe8;padding:5px}
+.print-footer{margin-top:12px;border-top:1px solid #dce4ec;padding-top:7px;display:flex;justify-content:space-between;font-size:9px;color:#0f172a !important;background:#ffffff !important}
+
 @media print{
  @page{size:A4 landscape;margin:10mm}
  html,body{background:#fff!important}
