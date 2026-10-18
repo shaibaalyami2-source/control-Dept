@@ -1,0 +1,15 @@
+{
+  "name": "crm-control-dept",
+  "version": "2.0.0",
+  "private": true,
+  "description": "CRM — incident/work-order management with a built-in Gemini assistant",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "vapid": "node scripts/generate-vapid.js",
+    "test": "node --test test/*.test.js",
+    "format": "prettier --write \"public/**/*.{js,css}\" \"server/**/*.js\""
+  }
+}

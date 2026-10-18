@@ -1,0 +1,32 @@
+# Render Blueprint: New -> Blueprint -> pick this repo. Secrets are entered in the dashboard.
+services:
+  - type: web
+    name: crm-control-dept
+    runtime: node
+    plan: free
+    buildCommand: echo "no build step"
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: SUPABASE_URL
+        value: https://rynlnxnkofwyileuwqce.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_jqTBQAbPMhQ0qn8_RcGp2w_guHOoe7W
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: PUSH_WEBHOOK_SECRET
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
